@@ -1,0 +1,50 @@
+---
+- name: Check if minikube profile exists
+  command: minikube profile list
+  register: profile_list
+  failed_when: false
+  changed_when: false
+  
+- name: Delete existing minikube profile if exists
+  command: minikube delete --profile {{ minikube.profile }}
+  when: minikube.profile in profile_list.stdout
+  ignore_errors: yes
+  
+- name: Start minikube cluster
+  command: >
+    minikube start
+    --profile={{ minikube.profile }}
+    --nodes={{ minikube.nodes }}
+    --memory={{ minikube.memory }}
+    --cpus={{ minikube.cpus }}
+    --kubernetes-version={{ minikube.kubernetes_version }}
+    --driver={{ minikube.driver }}
+    --cni=false
+    --wait=all
+  register: minikube_start
+  
+- name: Set kubectl context to minikube
+  command: kubectl config use-context {{ minikube.profile }}
+  
+- name: Wait for cluster to be ready
+  command: kubectl get nodes
+  register: nodes_ready
+  until: '"Ready" in nodes_ready.stdout'
+  retries: 30
+  delay: 10
+  
+- name: Enable minikube addons
+  command: minikube addons enable {{ item }} --profile {{ minikube.profile }}
+  loop:
+    - metrics-server
+    - dashboard
+  ignore_errors: yes
+  
+- name: Display cluster information
+  debug:
+    msg:
+      - "🚀 Minikube cluster '{{ minikube.profile }}' is ready!"
+      - "📊 Nodes: {{ minikube.nodes }}"
+      - "💾 Memory: {{ minikube.memory }}MB"
+      - "⚡ CPUs: {{ minikube.cpus }}"
+      - "🔄 Kubernetes: {{ minikube.kubernetes_version }}"

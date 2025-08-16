@@ -1,0 +1,58 @@
+---
+- name: Get ArgoCD server service information
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: argocd-server
+    namespace: "{{ argocd.namespace }}"
+  register: argocd_service_info
+  
+- name: Get Grafana service information
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: ebpf-ai-grafana
+    namespace: "{{ applications.ebpf_ai.namespace }}"
+  register: grafana_service_info
+  ignore_errors: yes
+  
+- name: Get ML Detector service information
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: ml-detector
+    namespace: "{{ applications.ebpf_ai.namespace }}"
+  register: ml_detector_service_info
+  ignore_errors: yes
+  
+- name: Display comprehensive access information
+  debug:
+    msg:
+      - "🎉 eBPF + AI GitOps Environment Ready!"
+      - ""
+      - "🔧 INFRASTRUCTURE ACCESS:"
+      - "   ArgoCD UI: http://{{ argocd_service_info.resources[0].status.loadBalancer.ingress[0].ip | default('localhost') }}"
+      - "   ArgoCD CLI Login: argocd login {{ argocd_service_info.resources[0].status.loadBalancer.ingress[0].ip | default('localhost') }}"
+      - "   Username: admin"
+      - "   Password: admin123"
+      - ""
+      - "📊 APPLICATION ACCESS (via ArgoCD deployment):"
+      - "   Grafana Dashboard: http://{{ grafana_service_info.resources[0].status.loadBalancer.ingress[0].ip | default('Pending') }}:3000"
+      - "   ML Detector API: http://{{ ml_detector_service_info.resources[0].spec.clusterIP | default('Pending') }}:5000"
+      - "   Prometheus: http://ebpf-ai-prometheus-server:9090 (ClusterIP)"
+      - ""
+      - "🚀 QUICK COMMANDS:"
+      - "   Monitor ArgoCD apps: argocd app list"
+      - "   Sync application: argocd app sync ebpf-ai"
+      - "   Port forward ArgoCD: kubectl port-forward svc/argocd-server -n argocd 8080:80"
+      - "   Port forward Grafana: kubectl port-forward svc/ebpf-ai-grafana -n ebpf-security 3000:80"
+      - ""
+      - "📝 DEVELOPMENT WORKFLOW:"
+      - "   1. Edit Helm charts in helm/charts/ebpf-ai/"
+      - "   2. git add . && git commit -m 'Update config'"
+      - "   3. git push origin main"
+      - "   4. ArgoCD automatically syncs changes!"
+      - ""
+      - "🔍 MONITORING:"
+      - "   Watch deployments: kubectl get pods -n ebpf-security -w"
+      - "   Check ArgoCD logs: kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller"

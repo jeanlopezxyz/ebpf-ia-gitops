@@ -1,0 +1,86 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ebpf-ai-alerts
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: prometheus
+    component: rules
+spec:
+  groups:
+  - name: ebpf-ai.rules
+    rules:
+    # ML Detector Alerts
+    - alert: MLDetectorHighAnomalyRate
+      expr: rate(anomalies_detected_total[5m]) > 10
+      for: 2m
+      labels:
+        severity: warning
+        service: ml-detector
+      annotations:
+        summary: "High anomaly detection rate"
+        description: "ML Detector is detecting {{ $value }} anomalies per second for more than 2 minutes"
+        
+    - alert: MLDetectorDown
+      expr: up{job="ml-detector"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: ml-detector
+      annotations:
+        summary: "ML Detector service is down"
+        description: "ML Detector has been down for more than 1 minute"
+        
+    - alert: MLDetectorHighMemoryUsage
+      expr: container_memory_usage_bytes{name=~".*ml-detector.*"} / container_spec_memory_limit_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        service: ml-detector
+      annotations:
+        summary: "High memory usage in ML Detector"
+        description: "ML Detector memory usage is above 90% for more than 5 minutes"
+        
+    # eBPF Monitor Alerts
+    - alert: EBPFMonitorDown
+      expr: up{job="ebpf-monitor"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: ebpf-monitor
+      annotations:
+        summary: "eBPF Monitor service is down"
+        description: "eBPF Monitor has been down for more than 1 minute"
+        
+    - alert: LowNetworkEventRate
+      expr: rate(network_events_total[5m]) < 1
+      for: 5m
+      labels:
+        severity: warning
+        service: ebpf-monitor
+      annotations:
+        summary: "Low network event rate"
+        description: "eBPF Monitor is collecting fewer than 1 event per second for more than 5 minutes"
+        
+    # General System Alerts
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{namespace="ebpf-security"}[5m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        service: kubernetes
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently"
+        
+    - alert: PodNotReady
+      expr: kube_pod_status_ready{condition="false", namespace="ebpf-security"} == 1
+      for: 10m
+      labels:
+        severity: warning
+        service: kubernetes
+      annotations:
+        summary: "Pod not ready"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 10 minutes"
+{{- end }}

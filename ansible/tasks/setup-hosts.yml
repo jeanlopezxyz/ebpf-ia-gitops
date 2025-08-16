@@ -1,0 +1,48 @@
+---
+- name: Get NGINX Ingress LoadBalancer IP
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: ingress-nginx-controller
+    namespace: ingress-nginx
+  register: nginx_service
+  
+- name: Set ingress IP variable
+  set_fact:
+    ingress_ip: "{{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip | default('127.0.0.1') }}"
+    
+- name: Check current hosts file entries
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ ingress_ip }} {{ item }}"
+    state: present
+    backup: yes
+  become: yes
+  loop:
+    - ebpf-ai.local
+    - registry.local
+    - grafana.local
+    - prometheus.local
+    - argocd.local
+  register: hosts_updated
+  
+- name: Display hosts file configuration
+  debug:
+    msg:
+      - "🔗 Hosts file updated with Ingress IP: {{ ingress_ip }}"
+      - ""
+      - "📍 Configured domains:"
+      - "  - ebpf-ai.local       → Main application dashboard"
+      - "  - registry.local      → Container registry"
+      - "  - grafana.local       → Grafana monitoring"
+      - "  - prometheus.local    → Prometheus metrics"
+      - "  - argocd.local        → ArgoCD GitOps UI"
+      - ""
+      - "🌐 Access URLs:"
+      - "  Main App:     http://ebpf-ai.local"
+      - "  ML API:       http://ebpf-ai.local/api"
+      - "  Metrics:      http://ebpf-ai.local/metrics"
+      - "  Grafana:      http://ebpf-ai.local/grafana"
+      - "  Prometheus:   http://ebpf-ai.local/prometheus"
+      - "  ArgoCD:       http://ebpf-ai.local/argocd"
+      - "  Registry:     http://registry.local"

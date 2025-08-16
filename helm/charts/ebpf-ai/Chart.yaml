@@ -1,0 +1,31 @@
+apiVersion: v2
+name: ebpf-ai
+description: eBPF + AI Security Monitoring and Anomaly Detection System
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ebpf
+  - ai
+  - security
+  - monitoring
+  - anomaly-detection
+home: https://github.com/yourusername/ebpf-ia-gitops
+sources:
+  - https://github.com/yourusername/ebpf-ia-gitops
+maintainers:
+  - name: eBPF AI Team
+    email: team@ebpf-ai.local
+dependencies:
+  - name: redis
+    version: "17.15.6"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: prometheus
+    version: "25.6.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: prometheus.enabled
+  - name: grafana
+    version: "7.0.8"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: grafana.enabled

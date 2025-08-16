@@ -1,0 +1,54 @@
+---
+- name: Bootstrap eBPF + AI GitOps Environment
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars:
+    minikube_profile: "ebpf-gitops"
+    kubernetes_namespace: "ebpf-security"
+    argocd_namespace: "argocd"
+    
+  tasks:
+    - name: Check prerequisites
+      include_tasks: tasks/prerequisites.yml
+      
+    - name: Setup Minikube cluster
+      include_role:
+        name: minikube
+        
+    - name: Install MetalLB LoadBalancer
+      include_role:
+        name: metallb
+        
+    - name: Install Cilium CNI with eBPF
+      include_role:
+        name: cilium
+        
+    - name: Setup Storage Classes
+      include_role:
+        name: storage
+        
+    - name: Install Container Registry
+      include_role:
+        name: registry
+        
+    - name: Install NGINX Ingress Controller
+      include_role:
+        name: ingress-nginx
+        
+    - name: Install Prometheus + Grafana Stack
+      include_role:
+        name: prometheus
+        
+    - name: Install ArgoCD GitOps
+      include_role:
+        name: argocd
+        
+    - name: Configure ArgoCD Applications
+      include_tasks: tasks/argocd-apps.yml
+      
+    - name: Setup hosts file for local access
+      include_tasks: tasks/setup-hosts.yml
+      
+    - name: Display access information
+      include_tasks: tasks/access-info.yml

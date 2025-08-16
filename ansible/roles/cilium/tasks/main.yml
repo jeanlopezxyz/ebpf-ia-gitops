@@ -1,0 +1,106 @@
+---
+- name: Add Cilium Helm repository
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io/
+    
+- name: Install Cilium CNI via Helm
+  kubernetes.core.helm:
+    name: cilium
+    chart_ref: cilium/cilium
+    release_namespace: kube-system
+    values:
+      # eBPF configuration
+      bpf:
+        masquerade: true
+        hostRouting: true
+      # Hubble observability
+      hubble:
+        enabled: "{{ cilium.enable_hubble }}"
+        relay:
+          enabled: "{{ cilium.enable_hubble }}"
+        ui:
+          enabled: "{{ cilium.enable_hubble }}"
+      # Gateway API support
+      gatewayAPI:
+        enabled: "{{ cilium.enable_gateway_api }}"
+      # eBPF host firewall
+      hostFirewall:
+        enabled: true
+      # Enable eBPF-based kube-proxy replacement
+      kubeProxyReplacement: strict
+      # Enable bandwidth manager for eBPF
+      bandwidthManager:
+        enabled: true
+      # Enable local redirect policy for eBPF
+      localRedirectPolicy: true
+    wait: true
+    timeout: 600s
+    
+- name: Wait for Cilium to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: DaemonSet
+    name: cilium
+    namespace: kube-system
+    wait: true
+    wait_condition:
+      type: Ready
+    wait_timeout: 300
+    
+- name: Install Cilium CLI (macOS)
+  block:
+    - name: Download Cilium CLI
+      get_url:
+        url: "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-darwin-amd64.tar.gz"
+        dest: "/tmp/cilium-cli.tar.gz"
+        
+    - name: Extract Cilium CLI
+      unarchive:
+        src: "/tmp/cilium-cli.tar.gz"
+        dest: "/tmp"
+        remote_src: yes
+        
+    - name: Install Cilium CLI
+      copy:
+        src: "/tmp/cilium"
+        dest: "/usr/local/bin/cilium"
+        mode: '0755'
+        remote_src: yes
+      become: yes
+  when: ansible_os_family == "Darwin"
+  
+- name: Install Cilium CLI (Linux)
+  block:
+    - name: Download Cilium CLI
+      get_url:
+        url: "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz"
+        dest: "/tmp/cilium-cli.tar.gz"
+        
+    - name: Extract Cilium CLI
+      unarchive:
+        src: "/tmp/cilium-cli.tar.gz"
+        dest: "/tmp"
+        remote_src: yes
+        
+    - name: Install Cilium CLI
+      copy:
+        src: "/tmp/cilium"
+        dest: "/usr/local/bin/cilium"
+        mode: '0755'
+        remote_src: yes
+      become: yes
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+  
+- name: Verify Cilium installation
+  command: cilium status --wait
+  register: cilium_status
+  
+- name: Display Cilium status
+  debug:
+    msg:
+      - "🔌 Cilium CNI with eBPF installed successfully!"
+      - "🔍 Hubble observability: {{ 'Enabled' if cilium.enable_hubble else 'Disabled' }}"
+      - "🚪 Gateway API: {{ 'Enabled' if cilium.enable_gateway_api else 'Disabled' }}"
+      - "🛡️ eBPF Host Firewall: Enabled"
+      - "⚡ kube-proxy replacement: Strict eBPF mode"

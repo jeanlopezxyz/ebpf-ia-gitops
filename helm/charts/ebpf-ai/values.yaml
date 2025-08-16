@@ -1,0 +1,270 @@
+# Default values for ebpf-ai chart
+
+global:
+  namespace: ebpf-security
+  registry: "localhost:30050"  # Internal registry
+  imageTag: "latest"
+  
+# ML Detector Configuration
+mlDetector:
+  name: ml-detector
+  replicaCount: 2
+  image:
+    repository: ml-detector
+    tag: latest
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+    
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+      
+  env:
+    - name: REDIS_HOST
+      value: "ebpf-ai-redis-master"
+    - name: REDIS_PORT
+      value: "6379"
+    - name: MODEL_CACHE_TTL
+      value: "3600"
+    - name: ENABLE_ML_CACHE
+      value: "true"
+      
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 5000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 5000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# eBPF Monitor Configuration  
+ebpfMonitor:
+  name: ebpf-monitor
+  replicaCount: 1
+  image:
+    repository: ebpf-monitor
+    tag: latest
+    pullPolicy: Always
+    
+  service:
+    type: ClusterIP
+    port: 8800
+    targetPort: 8800
+    
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+      
+  env:
+    - name: ML_DETECTOR_URL
+      value: "http://ml-detector:5000"
+    - name: METRICS_PORT
+      value: "8800"
+    - name: COLLECTION_INTERVAL
+      value: "10"
+      
+  livenessProbe:
+    httpGet:
+      path: /metrics
+      port: 8800
+    initialDelaySeconds: 10
+    periodSeconds: 10
+
+# Attack Simulator Configuration
+attackSimulator:
+  enabled: true
+  name: attack-simulator
+  replicaCount: 1
+  image:
+    repository: attack-simulator
+    tag: latest
+    pullPolicy: Always
+    
+  env:
+    - name: ATTACK_MODE
+      value: "mixed"
+    - name: INTENSITY
+      value: "3"
+    - name: TARGET_NETWORK
+      value: "10.0.0.0/24"
+
+# HPA Configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Network Policies
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+
+# Redis Configuration (Dependency)
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+  replica:
+    replicaCount: 1
+    persistence:
+      enabled: false
+
+# Prometheus Configuration (Dependency)
+prometheus:
+  enabled: true
+  alertmanager:
+    enabled: true
+    persistentVolume:
+      enabled: false
+  server:
+    persistentVolume:
+      enabled: false
+    service:
+      type: ClusterIP
+      servicePort: 9090
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    extraScrapeConfigs: |
+      - job_name: 'ml-detector'
+        static_configs:
+          - targets: ['ml-detector:5000']
+        metrics_path: '/metrics'
+        scrape_interval: 30s
+      - job_name: 'ebpf-monitor'
+        static_configs:
+          - targets: ['ebpf-monitor:8800']
+        metrics_path: '/metrics'
+        scrape_interval: 15s
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - ebpf-security
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+            
+# Grafana Configuration (Dependency)
+grafana:
+  enabled: true
+  persistence:
+    enabled: false
+  service:
+    type: LoadBalancer
+    port: 80
+  adminPassword: admin
+  plugins:
+    - grafana-piechart-panel
+    - grafana-worldmap-panel
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://ebpf-ai-prometheus-server:9090
+          access: proxy
+          isDefault: true
+          editable: true
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'ebpf-ai'
+          orgId: 1
+          folder: 'eBPF + AI'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/ebpf-ai
+  dashboards:
+    ebpf-ai:
+      ebpf-ai-overview:
+        gnetId: 315
+        revision: 3
+        datasource: Prometheus
+      kubernetes-cluster:
+        gnetId: 7249
+        revision: 1
+        datasource: Prometheus
+  dashboardsConfigMaps:
+    ebpf-ai: ebpf-ai-dashboard
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folder: /tmp/dashboards
+      provider:
+        foldersFromFilesStructure: true
+
+# Storage Configuration
+persistence:
+  enabled: true
+  storageClass: "standard"
+  size: 5Gi
+  accessMode: ReadWriteOnce
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  hosts:
+    - host: ebpf-ai.local
+      paths:
+        api: /api
+        metrics: /metrics
+        grafana: /grafana
+        prometheus: /prometheus
+        argocd: /argocd
+  registry:
+    host: registry.local
+  tls: []
+  annotations: {}
+  rateLimit:
+    enabled: true
+    rps: 100
+    window: 1m
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000

@@ -1,0 +1,45 @@
+---
+- name: Cleanup eBPF + AI GitOps Environment
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars:
+    minikube_profile: "ebpf-gitops"
+    
+  tasks:
+    - name: Delete ArgoCD applications
+      kubernetes.core.k8s:
+        state: absent
+        api_version: argoproj.io/v1alpha1
+        kind: Application
+        name: "{{ item }}"
+        namespace: argocd
+      loop:
+        - ebpf-ai
+        - ebpf-ai-apps
+      ignore_errors: yes
+      
+    - name: Delete namespaces
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Namespace
+        name: "{{ item }}"
+      loop:
+        - ebpf-security
+        - argocd
+        - metallb-system
+      ignore_errors: yes
+      
+    - name: Delete minikube cluster
+      command: minikube delete --profile {{ minikube_profile }}
+      ignore_errors: yes
+      
+    - name: Cleanup completed
+      debug:
+        msg:
+          - "🧹 Cleanup completed!"
+          - "✅ ArgoCD applications deleted"
+          - "✅ Namespaces deleted"
+          - "✅ Minikube cluster deleted"
+          - "💡 Run 'ansible-playbook bootstrap.yml' to recreate environment"

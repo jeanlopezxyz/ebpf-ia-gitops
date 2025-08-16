@@ -1,0 +1,107 @@
+---
+- name: Create ArgoCD namespace
+  kubernetes.core.k8s:
+    name: "{{ argocd.namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    
+- name: Add ArgoCD Helm repository
+  kubernetes.core.helm_repository:
+    name: argo
+    repo_url: https://argoproj.github.io/argo-helm
+    
+- name: Install ArgoCD via Helm
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    chart_version: "{{ argocd.version }}"
+    release_namespace: "{{ argocd.namespace }}"
+    values:
+      global:
+        image:
+          repository: quay.io/argoproj/argocd
+      configs:
+        params:
+          server.insecure: true  # For local development
+        secret:
+          argocdServerAdminPassword: "$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0oi.S.BN9K"  # bcrypt hash of "admin123"
+      server:
+        service:
+          type: LoadBalancer
+        ingress:
+          enabled: false
+      dex:
+        enabled: false  # Disable for simplicity
+      notifications:
+        enabled: false
+      applicationSet:
+        enabled: true
+    wait: true
+    timeout: 600s
+    
+- name: Wait for ArgoCD server to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd.namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+    
+- name: Get ArgoCD server LoadBalancer IP
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: argocd-server
+    namespace: "{{ argocd.namespace }}"
+  register: argocd_service
+  until: argocd_service.resources[0].status.loadBalancer.ingress is defined
+  retries: 30
+  delay: 10
+  
+- name: Install ArgoCD CLI (macOS)
+  block:
+    - name: Download ArgoCD CLI
+      get_url:
+        url: "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-darwin-amd64"
+        dest: "/tmp/argocd"
+        mode: '0755'
+        
+    - name: Install ArgoCD CLI
+      copy:
+        src: "/tmp/argocd"
+        dest: "/usr/local/bin/argocd"
+        mode: '0755'
+        remote_src: yes
+      become: yes
+  when: ansible_os_family == "Darwin"
+  
+- name: Install ArgoCD CLI (Linux)
+  block:
+    - name: Download ArgoCD CLI
+      get_url:
+        url: "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64"
+        dest: "/tmp/argocd"
+        mode: '0755'
+        
+    - name: Install ArgoCD CLI
+      copy:
+        src: "/tmp/argocd"
+        dest: "/usr/local/bin/argocd"
+        mode: '0755'
+        remote_src: yes
+      become: yes
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+  
+- name: Display ArgoCD access information
+  debug:
+    msg:
+      - "🚀 ArgoCD GitOps installed successfully!"
+      - "🌐 Access URL: http://{{ argocd_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      - "👤 Username: admin"
+      - "🔐 Password: admin123"
+      - "💡 Port forward: kubectl port-forward svc/argocd-server -n argocd 8080:80"

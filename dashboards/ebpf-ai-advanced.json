@@ -1,0 +1,221 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "eBPF + AI Security Monitoring - Advanced",
+    "tags": ["ebpf", "ai", "security", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🚨 Anomaly Detection Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(anomalies_detected_total[5m])",
+            "legendFormat": "Anomalies/sec",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(ml_predictions_total[5m]))",
+            "legendFormat": "Predictions/sec",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 1.0}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "🔍 ML Model Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ml_model_accuracy",
+            "legendFormat": "Accuracy - {{model_name}}",
+            "refId": "A"
+          },
+          {
+            "expr": "ml_model_precision",
+            "legendFormat": "Precision - {{model_name}}",
+            "refId": "B"
+          },
+          {
+            "expr": "ml_model_recall",
+            "legendFormat": "Recall - {{model_name}}",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "max": 1,
+            "unit": "percentunit"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "📊 System Resource Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{namespace=\"ebpf-security\"}[5m]) * 100",
+            "legendFormat": "CPU % - {{pod}}",
+            "refId": "A"
+          },
+          {
+            "expr": "container_memory_usage_bytes{namespace=\"ebpf-security\"} / 1024 / 1024",
+            "legendFormat": "Memory MB - {{pod}}",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "🌐 Network Events Analysis",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(network_events_total[5m])",
+            "legendFormat": "Events/sec - {{event_type}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(network_packets_total[5m])",
+            "legendFormat": "Packets/sec",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}
+      },
+      {
+        "id": 5,
+        "title": "🎯 Attack Detection Heatmap",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(attack_patterns_detected[5m])",
+            "legendFormat": "{{attack_type}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}
+      },
+      {
+        "id": 6,
+        "title": "📈 Model Training Metrics",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "ml_model_training_duration_seconds",
+            "legendFormat": "Training Duration",
+            "refId": "A",
+            "format": "table"
+          },
+          {
+            "expr": "ml_model_samples_processed",
+            "legendFormat": "Samples Processed",
+            "refId": "B",
+            "format": "table"
+          },
+          {
+            "expr": "ml_model_last_updated",
+            "legendFormat": "Last Updated",
+            "refId": "C",
+            "format": "table"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14}
+      },
+      {
+        "id": 7,
+        "title": "🔔 Alert Status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ALERTS{alertstate=\"firing\", namespace=\"ebpf-security\"}",
+            "legendFormat": "Firing - {{alertname}}",
+            "refId": "A"
+          },
+          {
+            "expr": "ALERTS{alertstate=\"pending\", namespace=\"ebpf-security\"}",
+            "legendFormat": "Pending - {{alertname}}",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 22}
+      },
+      {
+        "id": 8,
+        "title": "⚡ Redis Cache Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "redis_cache_hits_total / (redis_cache_hits_total + redis_cache_misses_total) * 100",
+            "legendFormat": "Cache Hit Rate %",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(redis_commands_processed_total[5m])",
+            "legendFormat": "Commands/sec",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 22}
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "namespace",
+          "type": "query",
+          "query": "label_values(up, namespace)",
+          "current": {
+            "value": "ebpf-security",
+            "text": "ebpf-security"
+          }
+        },
+        {
+          "name": "model",
+          "type": "query",
+          "query": "label_values(ml_model_accuracy, model_name)",
+          "current": {
+            "value": "all",
+            "text": "All"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "enable": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "query": "kube_pod_container_status_restarts_total{namespace=\"ebpf-security\"}"
+        }
+      ]
+    }
+  }
+}

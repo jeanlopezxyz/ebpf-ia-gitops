@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.mlDetector.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.mlDetector.name }}
+    component: ml-detector
+spec:
+  type: {{ .Values.mlDetector.service.type }}
+  ports:
+  - port: {{ .Values.mlDetector.service.port }}
+    targetPort: {{ .Values.mlDetector.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    app: {{ .Values.mlDetector.name }}

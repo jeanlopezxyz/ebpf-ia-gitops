@@ -1,0 +1,90 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ebpf-ai-dashboard
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: grafana
+    component: dashboard
+    grafana_dashboard: "1"
+data:
+  ebpf-ai-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "eBPF + AI Security Monitoring",
+        "tags": ["ebpf", "ai", "security"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "ML Detector - Anomaly Detection Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "rate(anomalies_detected_total[5m])",
+                "legendFormat": "Anomalies/sec"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 0.1},
+                    {"color": "red", "value": 1.0}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "eBPF Monitor - Network Events",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(network_events_total[5m])",
+                "legendFormat": "Events/sec"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "ML Models Performance",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "ml_model_accuracy",
+                "legendFormat": "{{model_name}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Resource Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{namespace=\"ebpf-security\"}[5m])",
+                "legendFormat": "CPU - {{pod}}"
+              },
+              {
+                "expr": "container_memory_usage_bytes{namespace=\"ebpf-security\"} / 1024 / 1024",
+                "legendFormat": "Memory MB - {{pod}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+          }
+        ],
+        "time": {"from": "now-1h", "to": "now"},
+        "refresh": "10s"
+      }
+    }
+{{- end }}

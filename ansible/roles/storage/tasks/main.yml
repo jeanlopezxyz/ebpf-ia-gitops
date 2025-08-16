@@ -1,0 +1,108 @@
+---
+- name: Check Minikube driver type
+  command: minikube profile list --output json
+  register: minikube_profiles
+  
+- name: Parse Minikube driver
+  set_fact:
+    minikube_driver: "{{ (minikube_profiles.stdout | from_json) | selectattr('Name', 'equalto', minikube.profile) | map(attribute='Config') | first | json_query('Driver') }}"
+    
+- name: Display storage configuration info
+  debug:
+    msg:
+      - "🗄️  Configuring storage for Minikube driver: {{ minikube_driver }}"
+      - "📊 Available storage options:"
+      - "  - standard: Default Minikube storage (hostPath)"
+      - "  - standard-rwo: ReadWriteOnce volumes"
+      - "  - local-storage: Local persistent volumes"
+
+- name: Enable storage addon for Minikube
+  command: minikube addons enable storage-provisioner --profile {{ minikube.profile }}
+  ignore_errors: yes
+
+- name: Enable volumesnapshots addon (if available)
+  command: minikube addons enable volumesnapshots --profile {{ minikube.profile }}
+  ignore_errors: yes
+
+- name: Create enhanced StorageClass for registry
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: registry-storage
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "false"
+      provisioner: k8s.io/minikube-hostpath
+      volumeBindingMode: Immediate
+      reclaimPolicy: Retain  # Keep data even if PVC is deleted
+      allowVolumeExpansion: true
+      parameters:
+        type: hostPath
+    state: present
+
+- name: Create local storage for better performance (Docker driver)
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: local-registry-storage
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "false"
+      provisioner: kubernetes.io/no-provisioner
+      volumeBindingMode: WaitForFirstConsumer
+      reclaimPolicy: Retain
+    state: present
+  when: minikube_driver == "docker"
+
+- name: Create PersistentVolume for local storage (Docker driver)
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+        name: registry-local-pv
+      spec:
+        capacity:
+          storage: 50Gi
+        accessModes:
+          - ReadWriteOnce
+        persistentVolumeReclaimPolicy: Retain
+        storageClassName: local-registry-storage
+        local:
+          path: /var/lib/registry-storage
+        nodeAffinity:
+          required:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - "{{ minikube.profile }}"
+    state: present
+  when: minikube_driver == "docker"
+
+- name: Create directory in Minikube for registry storage (Docker driver)
+  command: |
+    minikube ssh --profile {{ minikube.profile }} -- 'sudo mkdir -p /var/lib/registry-storage && sudo chmod 777 /var/lib/registry-storage'
+  when: minikube_driver == "docker"
+  ignore_errors: yes
+
+- name: Display storage setup results
+  debug:
+    msg:
+      - "✅ Storage configuration completed!"
+      - "🔧 Minikube Driver: {{ minikube_driver }}"
+      - "📦 StorageClasses created:"
+      - "  - registry-storage (hostPath, retain policy)"
+      - "{% if minikube_driver == 'docker' %}  - local-registry-storage (local PV, 50GB){% endif %}"
+      - ""
+      - "💡 Storage Features:"
+      - "  - Retain policy: Data survives PVC deletion"
+      - "  - Volume expansion: Can grow storage if needed"
+      - "{% if minikube_driver == 'docker' %}  - Local storage: Better performance for Docker driver{% endif %}"
+      - ""
+      - "🗂️  Storage Locations:"
+      - "  - hostPath: /tmp/hostpath-provisioner/"
+      - "{% if minikube_driver == 'docker' %}  - local: /var/lib/registry-storage (in Minikube VM){% endif %}"

@@ -1,0 +1,83 @@
+---
+- name: Check if Docker is installed
+  command: docker --version
+  register: docker_check
+  failed_when: false
+  changed_when: false
+  
+- name: Fail if Docker is not installed
+  fail:
+    msg: "Docker is not installed. Please install Docker first."
+  when: docker_check.rc != 0
+  
+- name: Check if kubectl is installed
+  command: kubectl version --client
+  register: kubectl_check
+  failed_when: false
+  changed_when: false
+  
+- name: Fail if kubectl is not installed
+  fail:
+    msg: "kubectl is not installed. Please install kubectl first."
+  when: kubectl_check.rc != 0
+  
+- name: Check if helm is installed
+  command: helm version
+  register: helm_check
+  failed_when: false
+  changed_when: false
+  
+- name: Fail if helm is not installed
+  fail:
+    msg: "Helm is not installed. Please install Helm first."
+  when: helm_check.rc != 0
+  
+- name: Check if minikube is installed
+  command: minikube version
+  register: minikube_check
+  failed_when: false
+  changed_when: false
+  
+- name: Install minikube if not present
+  block:
+    - name: Download minikube (macOS)
+      get_url:
+        url: "https://storage.googleapis.com/minikube/releases/latest/minikube-darwin-amd64"
+        dest: "/tmp/minikube"
+        mode: '0755'
+      when: ansible_os_family == "Darwin"
+      
+    - name: Install minikube (macOS)
+      copy:
+        src: "/tmp/minikube"
+        dest: "/usr/local/bin/minikube"
+        mode: '0755'
+        remote_src: yes
+      become: yes
+      when: ansible_os_family == "Darwin"
+      
+    - name: Download minikube (Linux)
+      get_url:
+        url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
+        dest: "/tmp/minikube"
+        mode: '0755'
+      when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+      
+    - name: Install minikube (Linux)
+      copy:
+        src: "/tmp/minikube"
+        dest: "/usr/local/bin/minikube"
+        mode: '0755'
+        remote_src: yes
+      become: yes
+      when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+      
+  when: minikube_check.rc != 0
+  
+- name: Display prerequisites status
+  debug:
+    msg: 
+      - "✅ Docker: {{ docker_check.stdout }}"
+      - "✅ kubectl: {{ kubectl_check.stdout }}"
+      - "✅ Helm: {{ helm_check.stdout }}"
+      - "✅ Minikube: Available"

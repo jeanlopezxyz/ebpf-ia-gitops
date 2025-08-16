@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.ebpfMonitor.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.ebpfMonitor.name }}
+    component: ebpf-monitor
+    version: {{ .Values.global.imageTag }}
+spec:
+  replicas: {{ .Values.ebpfMonitor.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.ebpfMonitor.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.ebpfMonitor.name }}
+        component: ebpf-monitor
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.ebpfMonitor.service.targetPort }}"
+        prometheus.io/path: "/metrics"
+      containers:
+      - name: {{ .Values.ebpfMonitor.name }}
+        image: "{{ .Values.global.registry }}/{{ .Values.ebpfMonitor.image.repository }}:{{ .Values.ebpfMonitor.image.tag | default .Values.global.imageTag }}"
+        imagePullPolicy: {{ .Values.ebpfMonitor.image.pullPolicy }}
+        ports:
+        - name: metrics
+          containerPort: {{ .Values.ebpfMonitor.service.targetPort }}
+          protocol: TCP
+        env:
+        {{- range .Values.ebpfMonitor.env }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.ebpfMonitor.resources | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.ebpfMonitor.livenessProbe | nindent 10 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.ebpfMonitor.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.ebpfMonitor.name }}
+    component: ebpf-monitor
+spec:
+  type: {{ .Values.ebpfMonitor.service.type }}
+  ports:
+  - port: {{ .Values.ebpfMonitor.service.port }}
+    targetPort: {{ .Values.ebpfMonitor.service.targetPort }}
+    protocol: TCP
+    name: metrics
+  selector:
+    app: {{ .Values.ebpfMonitor.name }}

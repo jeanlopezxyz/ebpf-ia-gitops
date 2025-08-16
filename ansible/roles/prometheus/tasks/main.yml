@@ -1,0 +1,130 @@
+---
+- name: Add Prometheus Helm repository
+  kubernetes.core.helm_repository:
+    name: prometheus-community
+    repo_url: https://prometheus-community.github.io/helm-charts
+    
+- name: Add Grafana Helm repository
+  kubernetes.core.helm_repository:
+    name: grafana
+    repo_url: https://grafana.github.io/helm-charts
+    
+- name: Install Prometheus Operator CRDs
+  kubernetes.core.helm:
+    name: prometheus-operator-crds
+    chart_ref: prometheus-community/prometheus-operator-crds
+    release_namespace: monitoring
+    create_namespace: true
+    wait: true
+    timeout: 300s
+    
+- name: Install kube-prometheus-stack
+  kubernetes.core.helm:
+    name: kube-prometheus-stack
+    chart_ref: prometheus-community/kube-prometheus-stack
+    release_namespace: monitoring
+    values:
+      prometheus:
+        prometheusSpec:
+          storageSpec:
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources:
+                  requests:
+                    storage: 10Gi
+          additionalScrapeConfigs:
+            - job_name: 'ml-detector'
+              static_configs:
+                - targets: ['ml-detector.ebpf-security.svc.cluster.local:5000']
+              metrics_path: '/metrics'
+              scrape_interval: 30s
+            - job_name: 'ebpf-monitor'
+              static_configs:
+                - targets: ['ebpf-monitor.ebpf-security.svc.cluster.local:8800']
+              metrics_path: '/metrics'
+              scrape_interval: 15s
+          serviceMonitorSelectorNilUsesHelmValues: false
+          ruleSelectorNilUsesHelmValues: false
+      grafana:
+        enabled: true
+        adminPassword: admin123
+        service:
+          type: LoadBalancer
+        persistence:
+          enabled: false
+        plugins:
+          - grafana-piechart-panel
+          - grafana-worldmap-panel
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+              - name: 'ebpf-ai'
+                orgId: 1
+                folder: 'eBPF + AI'
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/ebpf-ai
+        sidecar:
+          dashboards:
+            enabled: true
+            label: grafana_dashboard
+            folder: /tmp/dashboards
+            provider:
+              foldersFromFilesStructure: true
+      alertmanager:
+        enabled: true
+        alertmanagerSpec:
+          storage:
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources:
+                  requests:
+                    storage: 5Gi
+    wait: true
+    timeout: 600s
+    
+- name: Wait for Prometheus to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: prometheus-kube-prometheus-stack-prometheus
+    namespace: monitoring
+    wait: true
+    wait_condition:
+      type: Ready
+    wait_timeout: 300
+    
+- name: Wait for Grafana to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: kube-prometheus-stack-grafana
+    namespace: monitoring
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+    
+- name: Get Grafana service information
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: kube-prometheus-stack-grafana
+    namespace: monitoring
+  register: grafana_service
+  
+- name: Display monitoring stack information
+  debug:
+    msg:
+      - "📊 Prometheus + Grafana stack installed successfully!"
+      - "🎯 Prometheus: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+      - "📈 Grafana: http://{{ grafana_service.resources[0].status.loadBalancer.ingress[0].ip | default('pending') }}"
+      - "👤 Grafana Login: admin / admin123"
+      - "🔔 AlertManager: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
+      - "💡 Port forward Grafana: kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80"

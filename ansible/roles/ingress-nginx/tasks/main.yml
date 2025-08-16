@@ -1,0 +1,169 @@
+---
+- name: Add NGINX Ingress Helm repository
+  kubernetes.core.helm_repository:
+    name: ingress-nginx
+    repo_url: https://kubernetes.github.io/ingress-nginx
+    
+- name: Install NGINX Ingress Controller
+  kubernetes.core.helm:
+    name: ingress-nginx
+    chart_ref: ingress-nginx/ingress-nginx
+    release_namespace: ingress-nginx
+    create_namespace: true
+    values:
+      controller:
+        # Enable metrics for monitoring
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+        # Enable admission webhooks
+        admissionWebhooks:
+          enabled: true
+        # Service configuration for Minikube
+        service:
+          type: LoadBalancer
+          annotations:
+            metallb.universe.tf/loadBalancerIPs: "{{ network.metallb_ip_range.split('-')[0] }}"
+        # Enable SSL passthrough
+        extraArgs:
+          enable-ssl-passthrough: ""
+        # Resource limits
+        resources:
+          requests:
+            cpu: 100m
+            memory: 90Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        # Node selector for scheduling
+        nodeSelector:
+          kubernetes.io/os: linux
+        # Enable real IP preservation
+        config:
+          use-forwarded-headers: "true"
+          compute-full-forwarded-for: "true"
+          use-proxy-protocol: "false"
+          proxy-real-ip-cidr: "0.0.0.0/0"
+    wait: true
+    timeout: 600s
+    
+- name: Wait for NGINX Ingress Controller to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: ingress-nginx-controller
+    namespace: ingress-nginx
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+    
+- name: Get NGINX Ingress LoadBalancer IP
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: ingress-nginx-controller
+    namespace: ingress-nginx
+  register: nginx_service
+  until: nginx_service.resources[0].status.loadBalancer.ingress is defined
+  retries: 30
+  delay: 10
+  
+- name: Create default backend for ingress
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: default-backend
+        namespace: ingress-nginx
+        labels:
+          app: default-backend
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: default-backend
+        template:
+          metadata:
+            labels:
+              app: default-backend
+          spec:
+            containers:
+            - name: default-backend
+              image: gcr.io/google_containers/defaultbackend:1.0
+              ports:
+              - containerPort: 8080
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 20Mi
+                limits:
+                  cpu: 50m
+                  memory: 50Mi
+    state: present
+    
+- name: Create default backend service
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: default-backend
+        namespace: ingress-nginx
+        labels:
+          app: default-backend
+      spec:
+        ports:
+        - port: 80
+          targetPort: 8080
+        selector:
+          app: default-backend
+    state: present
+    
+- name: Test NGINX Ingress Controller
+  uri:
+    url: "http://{{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip }}/healthz"
+    method: GET
+    status_code: 200
+  register: nginx_test
+  until: nginx_test.status == 200
+  retries: 10
+  delay: 10
+  ignore_errors: yes
+  
+- name: Display NGINX Ingress information
+  debug:
+    msg:
+      - "🌐 NGINX Ingress Controller deployed successfully!"
+      - "📍 LoadBalancer IP: {{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      - "🔗 Internal Service: ingress-nginx-controller.ingress-nginx.svc.cluster.local"
+      - "📊 Metrics: Enabled with ServiceMonitor"
+      - "🔧 SSL Passthrough: Enabled"
+      - ""
+      - "🛠️  Next Steps:"
+      - "  1. Create Ingress resources for your applications"
+      - "  2. Configure DNS entries pointing to {{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      - "  3. Add TLS certificates for HTTPS"
+      - ""
+      - "📋 Example Ingress:"
+      - "  apiVersion: networking.k8s.io/v1"
+      - "  kind: Ingress"
+      - "  metadata:"
+      - "    name: my-app-ingress"
+      - "    annotations:"
+      - "      kubernetes.io/ingress.class: nginx"
+      - "  spec:"
+      - "    rules:"
+      - "    - host: my-app.local"
+      - "      http:"
+      - "        paths:"
+      - "        - path: /"
+      - "          pathType: Prefix"
+      - "          backend:"
+      - "            service:"
+      - "              name: my-app"
+      - "              port:"
+      - "                number: 80"

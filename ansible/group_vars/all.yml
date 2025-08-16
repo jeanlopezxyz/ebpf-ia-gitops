@@ -1,0 +1,64 @@
+---
+# Global configuration for eBPF + AI GitOps deployment
+
+# Minikube configuration
+minikube:
+  profile: "ebpf-gitops"
+  nodes: 3
+  memory: "8192"
+  cpus: 4
+  kubernetes_version: "v1.28.3"
+  driver: "docker"  # or "podman", "virtualbox"
+  
+# Network configuration
+network:
+  metallb_ip_range: "192.168.49.100-192.168.49.110"
+  
+# Cilium configuration
+cilium:
+  version: "1.14.5"
+  enable_hubble: true
+  enable_gateway_api: true
+  
+# ArgoCD configuration
+argocd:
+  version: "5.51.6"
+  namespace: "argocd"
+  admin_password: "argocd-admin"  # Change this in production!
+  
+# Application configuration
+applications:
+  ebpf_ai:
+    namespace: "ebpf-security"
+    git_repo: "git@github.com:jeanlopezxyz/ebpf-ia-gitops.git"
+    git_path: "helm/charts/ebpf-ai"
+    git_branch: "main"
+    
+# Docker registry
+registry:
+  enabled: true
+  port: 30050
+  storage_size: "20Gi"
+  
+# Ingress configuration
+ingress:
+  enabled: true
+  nginx:
+    enable_metrics: true
+    ssl_redirect: false
+  hosts:
+    main: "ebpf-ai.local"
+    registry: "registry.local"
+    grafana: "grafana.local"
+    prometheus: "prometheus.local"
+    argocd: "argocd.local"
+  
+# Resource limits
+resources:
+  ml_detector:
+    replicas: 2
+    cpu_limit: "1000m"
+    memory_limit: "2Gi"
+  ebpf_monitor:
+    cpu_limit: "500m"
+    memory_limit: "1Gi"

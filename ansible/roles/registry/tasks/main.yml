@@ -1,0 +1,148 @@
+---
+- name: Create registry namespace
+  kubernetes.core.k8s:
+    name: container-registry
+    api_version: v1
+    kind: Namespace
+    state: present
+    
+- name: Check Minikube driver type
+  command: minikube profile list --output json
+  register: minikube_profiles
+  
+- name: Parse Minikube driver
+  set_fact:
+    minikube_driver: "{{ (minikube_profiles.stdout | from_json) | selectattr('Name', 'equalto', minikube.profile) | map(attribute='Config') | first | json_query('Driver') }}"
+  
+- name: Create registry PVC for image storage (standard)
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: registry-storage
+        namespace: container-registry
+        labels:
+          app: registry
+          component: storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: "{{ 'local-registry-storage' if minikube_driver == 'docker' else 'standard' }}"
+        resources:
+          requests:
+            storage: "{{ registry.storage_size }}"
+    state: present
+    
+- name: Deploy internal container registry
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: registry
+        namespace: container-registry
+        labels:
+          app: registry
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: registry
+        template:
+          metadata:
+            labels:
+              app: registry
+          spec:
+            containers:
+            - name: registry
+              image: registry:2
+              ports:
+              - containerPort: 5000
+                name: registry
+              env:
+              - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+                value: /var/lib/registry
+              - name: REGISTRY_STORAGE_DELETE_ENABLED
+                value: "true"
+              - name: REGISTRY_HTTP_ADDR
+                value: "0.0.0.0:5000"
+              volumeMounts:
+              - name: registry-storage
+                mountPath: /var/lib/registry
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 1Gi
+            volumes:
+            - name: registry-storage
+              persistentVolumeClaim:
+                claimName: registry-storage
+    state: present
+    
+- name: Create registry service with NodePort
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: registry
+        namespace: container-registry
+        labels:
+          app: registry
+      spec:
+        type: NodePort
+        ports:
+        - port: 5000
+          targetPort: 5000
+          nodePort: 30050
+          name: registry
+        selector:
+          app: registry
+    state: present
+    
+- name: Wait for registry to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: registry
+    namespace: container-registry
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+    
+- name: Get minikube IP for registry access
+  command: minikube ip --profile {{ minikube.profile }}
+  register: minikube_ip
+  
+- name: Test registry connectivity
+  uri:
+    url: "http://{{ minikube_ip.stdout }}:30050/v2/_catalog"
+    method: GET
+    status_code: 200
+  register: registry_test
+  until: registry_test.status == 200
+  retries: 10
+  delay: 10
+  
+- name: Display registry information
+  debug:
+    msg:
+      - "🐳 Container Registry deployed successfully!"
+      - "📍 Registry URL: {{ minikube_ip.stdout }}:30050"
+      - "🔗 Internal Access: registry.container-registry.svc.cluster.local:5000"
+      - "💾 Storage: 20GB PVC"
+      - "✅ Health Check: PASSED"
+      - ""
+      - "🛠️  Usage Examples:"
+      - "  # Tag image for registry:"
+      - "  docker tag my-app:latest {{ minikube_ip.stdout }}:30050/my-app:latest"
+      - "  # Push to registry:"
+      - "  docker push {{ minikube_ip.stdout }}:30050/my-app:latest"
+      - "  # Pull from registry:"
+      - "  docker pull {{ minikube_ip.stdout }}:30050/my-app:latest"
