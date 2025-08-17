@@ -33,7 +33,7 @@ spec:
     - name: fetch-source
       taskRef:
         name: git-clone
-        kind: ClusterTask
+        kind: Task
         apiVersion: tekton.dev/v1
       workspaces:
         - name: output
@@ -47,7 +47,7 @@ spec:
     - name: build-image
       taskRef:
         name: buildah
-        kind: ClusterTask
+        kind: Task
         apiVersion: tekton.dev/v1
       runAfter:
         - fetch-source
