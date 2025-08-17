@@ -1,0 +1,17 @@
+apiVersion: v2
+name: tekton-pipelines
+description: A Helm chart for Tekton Pipelines CI/CD
+type: application
+version: 0.1.0
+appVersion: "0.63.0"
+keywords:
+  - tekton
+  - ci/cd
+  - pipelines
+  - ebpf
+  - ai
+maintainers:
+  - name: eBPF AI Team
+home: https://tekton.dev
+sources:
+  - https://github.com/tektoncd/pipeline

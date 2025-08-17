@@ -1,0 +1,52 @@
+{{- if .Values.tekton }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/part-of: tekton-system
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tekton-installer
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-installer
+    app.kubernetes.io/part-of: tekton-system
+spec:
+  template:
+    spec:
+      serviceAccountName: tekton-installer
+      restartPolicy: OnFailure
+      containers:
+      - name: installer
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Installing Tekton Pipelines {{ .Values.tekton.version }}..."
+          kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/{{ .Values.tekton.version }}/release.yaml
+          echo "Tekton Pipelines installed successfully"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-installer
+  namespace: tekton-pipelines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-installer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: tekton-installer
+  namespace: tekton-pipelines
+{{- end }}
