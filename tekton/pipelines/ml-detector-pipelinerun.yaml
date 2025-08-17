@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: ml-detector-build
-  namespace: tekton-pipelines
+  namespace: ebpf-security
   labels:
     app.kubernetes.io/name: ml-detector-build
     app.kubernetes.io/part-of: ebpf-ai-system

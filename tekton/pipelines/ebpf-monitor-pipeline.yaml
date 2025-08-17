@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: ebpf-monitor-ci
-  namespace: tekton-pipelines
+  namespace: ebpf-security
   labels:
     app.kubernetes.io/name: ebpf-monitor-ci
     app.kubernetes.io/part-of: ebpf-ai-system
