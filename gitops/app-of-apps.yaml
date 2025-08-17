@@ -9,7 +9,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:jeanlopezxyz/ebpf-ia-gitops.git
+    repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
     targetRevision: main
     path: gitops/applications
   destination:
