@@ -72,7 +72,7 @@ spec:
         service: kubernetes
       annotations:
         summary: "Pod is crash looping"
-        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently"
+        description: "Pod is restarting frequently in ebpf-security namespace"
         
     - alert: PodNotReady
       expr: kube_pod_status_ready{condition="false", namespace="ebpf-security"} == 1
@@ -82,5 +82,5 @@ spec:
         service: kubernetes
       annotations:
         summary: "Pod not ready"
-        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 10 minutes"
+        description: "Pod has been not ready for more than 10 minutes in ebpf-security namespace"
 {{- end }}
