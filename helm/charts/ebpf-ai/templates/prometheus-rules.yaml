@@ -20,7 +20,7 @@ spec:
         service: ml-detector
       annotations:
         summary: "High anomaly detection rate"
-        description: "ML Detector is detecting {{ $value }} anomalies per second for more than 2 minutes"
+        description: "ML Detector is detecting anomalies per second for more than 2 minutes"
         
     - alert: MLDetectorDown
       expr: up{job="ml-detector"} == 0
