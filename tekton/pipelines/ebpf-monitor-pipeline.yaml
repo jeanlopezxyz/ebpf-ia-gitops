@@ -34,6 +34,7 @@ spec:
       taskRef:
         name: git-clone
         kind: ClusterTask
+        apiVersion: tekton.dev/v1
       workspaces:
         - name: output
           workspace: shared-data
@@ -47,6 +48,7 @@ spec:
       taskRef:
         name: buildah
         kind: ClusterTask
+        apiVersion: tekton.dev/v1
       runAfter:
         - fetch-source
       workspaces:
