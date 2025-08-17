@@ -1,0 +1,63 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ml-detector-ci
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: ml-detector-ci
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  description: CI pipeline for ML Detector application
+  params:
+    - name: git-url
+      description: Git repository URL
+      default: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      description: Git revision to build
+      default: main
+    - name: image-registry
+      description: Container registry URL
+      default: 192.168.67.2:5000
+    - name: image-name
+      description: Image name
+      default: ml-detector
+    - name: image-tag
+      description: Image tag
+      default: latest
+      
+  workspaces:
+    - name: shared-data
+      description: Shared workspace for source code
+      
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      workspaces:
+        - name: output
+          workspace: shared-data
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+          
+    - name: build-image
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - fetch-source
+      workspaces:
+        - name: source
+          workspace: shared-data
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/$(params.image-name):$(params.image-tag)
+        - name: DOCKERFILE
+          value: ./applications/ml-detector/Dockerfile
+        - name: CONTEXT
+          value: ./applications/ml-detector
+        - name: TLSVERIFY
+          value: "false"

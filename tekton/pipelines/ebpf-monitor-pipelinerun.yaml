@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: ebpf-monitor-build
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: ebpf-monitor-build
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  pipelineRef:
+    name: ebpf-monitor-ci
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  params:
+    - name: git-url
+      value: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      value: main
+    - name: image-registry
+      value: 192.168.67.2:5000
+    - name: image-name
+      value: ebpf-monitor
+    - name: image-tag
+      value: latest
