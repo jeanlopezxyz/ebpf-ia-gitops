@@ -10,7 +10,8 @@
     
   tasks:
     - name: Check prerequisites
-      include_tasks: tasks/prerequisites.yml
+      include_role:
+        name: prerequisites
       
     - name: Setup Minikube cluster
       include_role:
@@ -19,6 +20,7 @@
     - name: Install MetalLB LoadBalancer
       include_role:
         name: metallb
+      when: deployment_mode.type == 'prod'
         
     - name: Install Cilium CNI with eBPF
       include_role:
@@ -32,23 +34,18 @@
       include_role:
         name: registry
         
-    - name: Install NGINX Ingress Controller
-      include_role:
-        name: ingress-nginx
-        
     - name: Install Prometheus + Grafana Stack
       include_role:
         name: prometheus
+        
+    - name: Install NGINX Ingress Controller
+      include_role:
+        name: ingress-nginx
         
     - name: Install ArgoCD GitOps
       include_role:
         name: argocd
         
-    - name: Configure ArgoCD Applications
-      include_tasks: tasks/argocd-apps.yml
-      
-    - name: Setup hosts file for local access
-      include_tasks: tasks/setup-hosts.yml
-      
     - name: Display access information
-      include_tasks: tasks/access-info.yml
+      include_role:
+        name: access-info

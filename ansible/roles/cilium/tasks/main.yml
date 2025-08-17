@@ -28,73 +28,29 @@
       hostFirewall:
         enabled: true
       # Enable eBPF-based kube-proxy replacement
-      kubeProxyReplacement: strict
+      kubeProxyReplacement: true
       # Enable bandwidth manager for eBPF
       bandwidthManager:
         enabled: true
       # Enable local redirect policy for eBPF
       localRedirectPolicy: true
     wait: true
-    timeout: 600s
+    timeout: 300s
     
-- name: Wait for Cilium to be ready
+- name: Wait for Cilium DaemonSet to be ready
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: DaemonSet
-    name: cilium
+    api_version: v1
+    kind: Pod
     namespace: kube-system
+    label_selectors:
+      - k8s-app=cilium
     wait: true
     wait_condition:
       type: Ready
-    wait_timeout: 300
+      status: "True"
+    wait_timeout: 600
     
-- name: Install Cilium CLI (macOS)
-  block:
-    - name: Download Cilium CLI
-      get_url:
-        url: "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-darwin-amd64.tar.gz"
-        dest: "/tmp/cilium-cli.tar.gz"
-        
-    - name: Extract Cilium CLI
-      unarchive:
-        src: "/tmp/cilium-cli.tar.gz"
-        dest: "/tmp"
-        remote_src: yes
-        
-    - name: Install Cilium CLI
-      copy:
-        src: "/tmp/cilium"
-        dest: "/usr/local/bin/cilium"
-        mode: '0755'
-        remote_src: yes
-      become: yes
-  when: ansible_os_family == "Darwin"
-  
-- name: Install Cilium CLI (Linux)
-  block:
-    - name: Download Cilium CLI
-      get_url:
-        url: "https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz"
-        dest: "/tmp/cilium-cli.tar.gz"
-        
-    - name: Extract Cilium CLI
-      unarchive:
-        src: "/tmp/cilium-cli.tar.gz"
-        dest: "/tmp"
-        remote_src: yes
-        
-    - name: Install Cilium CLI
-      copy:
-        src: "/tmp/cilium"
-        dest: "/usr/local/bin/cilium"
-        mode: '0755'
-        remote_src: yes
-      become: yes
-  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
-  
-- name: Verify Cilium installation
-  command: cilium status --wait
-  register: cilium_status
+# Cilium CLI installation removed - CNI works perfectly without CLI
   
 - name: Display Cilium status
   debug:

@@ -1,18 +1,39 @@
 ---
 # Global configuration for eBPF + AI GitOps deployment
 
+# Environment configuration
+# 
+# LAB MODE (default):
+#   - Uses NodePort for services (accessible via Minikube IP + port)
+#   - Uses podman driver (simpler setup)
+#   - Virtual MetalLB IPs (192.168.49.x range)
+#   - Access: http://192.168.58.2:32250/argocd
+#
+# PROD MODE:
+#   - Uses LoadBalancer with MetalLB (direct IP access)  
+#   - Uses qemu driver with bridge networking
+#   - Real network IPs (10.0.20.x range) 
+#   - Access: http://10.0.20.200 (direct)
+#   - Requires: Network bridge interface configuration
+#
+deployment_mode:
+  type: "lab"  # Options: "prod" or "lab" - Default: lab for development
+  
 # Minikube configuration
 minikube:
-  profile: "ebpf-gitops"
+  profile: "lab-ebpf-ia"
   nodes: 3
-  memory: "8192"
-  cpus: 4
+  memory: "4096"
+  cpus: 2
   kubernetes_version: "v1.28.3"
-  driver: "docker"  # or "podman", "virtualbox"
+  driver: "{{ 'qemu' if deployment_mode.type == 'prod' else 'podman' }}"  # qemu for prod bridge, podman for lab
   
 # Network configuration
 network:
-  metallb_ip_range: "192.168.49.100-192.168.49.110"
+  # Production: Use local network range for direct access
+  # Lab: Use Minikube virtual range (accessed via NodePort)
+  metallb_ip_range: "{{ '10.0.20.200-10.0.20.210' if deployment_mode.type == 'prod' else '192.168.49.100-192.168.49.110' }}"
+  bridge_interface: "en0"  # Network interface for production bridge mode
   
 # Cilium configuration
 cilium:
@@ -25,6 +46,7 @@ argocd:
   version: "5.51.6"
   namespace: "argocd"
   admin_password: "argocd-admin"  # Change this in production!
+  git_repo_url: "git@github.com:jeanlopezxyz/ebpf-ia-gitops.git"
   
 # Application configuration
 applications:
@@ -46,12 +68,15 @@ ingress:
   nginx:
     enable_metrics: true
     ssl_redirect: false
+    # Service type based on environment
+    service_type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
   hosts:
     main: "ebpf-ai.local"
     registry: "registry.local"
     grafana: "grafana.local"
     prometheus: "prometheus.local"
     argocd: "argocd.local"
+    dashboard: "dashboard.local"
   
 # Resource limits
 resources:

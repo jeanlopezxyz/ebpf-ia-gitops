@@ -19,6 +19,7 @@
     --cpus={{ minikube.cpus }}
     --kubernetes-version={{ minikube.kubernetes_version }}
     --driver={{ minikube.driver }}
+    {% if deployment_mode.type == 'prod' %}--network=bridge --bridge={{ network.bridge_interface }}{% endif %}
     --cni=false
     --wait=all
   register: minikube_start

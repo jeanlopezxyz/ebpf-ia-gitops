@@ -18,9 +18,6 @@
     chart_version: "{{ argocd.version }}"
     release_namespace: "{{ argocd.namespace }}"
     values:
-      global:
-        image:
-          repository: quay.io/argoproj/argocd
       configs:
         params:
           server.insecure: true  # For local development
@@ -28,7 +25,7 @@
           argocdServerAdminPassword: "$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0oi.S.BN9K"  # bcrypt hash of "admin123"
       server:
         service:
-          type: LoadBalancer
+          type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
         ingress:
           enabled: false
       dex:
@@ -37,71 +34,267 @@
         enabled: false
       applicationSet:
         enabled: true
-    wait: true
-    timeout: 600s
+    wait: false
     
-- name: Wait for ArgoCD server to be ready
+- name: Wait for ArgoCD pods to be running
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: argocd-server
+    api_version: v1
+    kind: Pod
     namespace: "{{ argocd.namespace }}"
+    label_selectors:
+      - app.kubernetes.io/part-of=argocd
     wait: true
     wait_condition:
-      type: Available
+      type: Ready
       status: "True"
     wait_timeout: 300
     
-- name: Get ArgoCD server LoadBalancer IP
+- name: Get ArgoCD server service information
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Service
     name: argocd-server
     namespace: "{{ argocd.namespace }}"
   register: argocd_service
-  until: argocd_service.resources[0].status.loadBalancer.ingress is defined
-  retries: 30
-  delay: 10
   
-- name: Install ArgoCD CLI (macOS)
-  block:
-    - name: Download ArgoCD CLI
-      get_url:
-        url: "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-darwin-amd64"
-        dest: "/tmp/argocd"
-        mode: '0755'
-        
-    - name: Install ArgoCD CLI
-      copy:
-        src: "/tmp/argocd"
-        dest: "/usr/local/bin/argocd"
-        mode: '0755'
-        remote_src: yes
-      become: yes
-  when: ansible_os_family == "Darwin"
+- name: Create SSH secret for Git repository access
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: git-ssh-key
+        namespace: "{{ argocd.namespace }}"
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      type: Opaque
+      stringData:
+        type: git
+        url: "{{ argocd.git_repo_url }}"
+        sshPrivateKey: "{{ lookup('file', ansible_env.HOME + '/.ssh/id_ed25519') }}"
+    state: present
+  when: ansible_env.HOME is defined
   
-- name: Install ArgoCD CLI (Linux)
-  block:
-    - name: Download ArgoCD CLI
-      get_url:
-        url: "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64"
-        dest: "/tmp/argocd"
-        mode: '0755'
-        
-    - name: Install ArgoCD CLI
-      copy:
-        src: "/tmp/argocd"
-        dest: "/usr/local/bin/argocd"
-        mode: '0755'
-        remote_src: yes
-      become: yes
-  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian"
+- name: Create ArgoCD Ingress for UI access
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: argocd-server-ingress
+        namespace: "{{ argocd.namespace }}"
+        annotations:
+          nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+          nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      spec:
+        ingressClassName: nginx
+        rules:
+        - host: argocd.local
+          http:
+            paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: argocd-server
+                  port:
+                    number: 443
+        - http:
+            paths:
+            - path: /argocd
+              pathType: Prefix
+              backend:
+                service:
+                  name: argocd-server
+                  port:
+                    number: 443
+    state: present
+
+- name: Create Kubernetes Dashboard Ingress
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: kubernetes-dashboard-ingress
+        namespace: kubernetes-dashboard
+        annotations:
+          nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+          nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      spec:
+        ingressClassName: nginx
+        rules:
+        - host: dashboard.local
+          http:
+            paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: kubernetes-dashboard
+                  port:
+                    number: 443
+        - http:
+            paths:
+            - path: /dashboard
+              pathType: Prefix
+              backend:
+                service:
+                  name: kubernetes-dashboard
+                  port:
+                    number: 443
+    state: present
   
 - name: Display ArgoCD access information
   debug:
     msg:
       - "🚀 ArgoCD GitOps installed successfully!"
-      - "🌐 Access URL: http://{{ argocd_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      - "🌐 Access URL: Use port-forward (LoadBalancer pending in Minikube)"
       - "👤 Username: admin"
       - "🔐 Password: admin123"
       - "💡 Port forward: kubectl port-forward svc/argocd-server -n argocd 8080:80"
+- name: Add required Helm repositories for dependencies
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+  loop:
+    - name: bitnami
+      url: https://charts.bitnami.com/bitnami
+    - name: grafana  
+      url: https://grafana.github.io/helm-charts
+    - name: prometheus-community
+      url: https://prometheus-community.github.io/helm-charts
+
+- name: Build Helm chart dependencies for eBPF AI
+  command: helm dependency build
+  args:
+    chdir: "/Users/jeanlopez/ebpf-ia-gitops/helm/charts/ebpf-ai"
+  register: helm_deps
+  changed_when: helm_deps.rc == 0
+
+- name: Wait for ArgoCD to be fully ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ argocd.namespace }}"
+    label_selectors:
+      - app.kubernetes.io/name=argocd-server
+    wait: true
+    wait_condition:
+      type: Ready
+      status: "True"
+    wait_timeout: 300
+    
+- name: Apply App-of-Apps pattern
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: ebpf-ai-apps
+        namespace: "{{ argocd.namespace }}"
+        labels:
+          app.kubernetes.io/name: ebpf-ai-apps
+          app.kubernetes.io/part-of: ebpf-ai-system
+      spec:
+        project: default
+        source:
+          repoURL: "{{ applications.ebpf_ai.git_repo }}"
+          targetRevision: "{{ applications.ebpf_ai.git_branch }}"
+          path: gitops/applications
+        destination:
+          server: https://kubernetes.default.svc
+          namespace: "{{ argocd.namespace }}"
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+            allowEmpty: false
+          syncOptions:
+            - CreateNamespace=true
+            - PrunePropagationPolicy=foreground
+            - PruneLast=true
+          retry:
+            limit: 5
+            backoff:
+              duration: 5s
+              factor: 2
+              maxDuration: 3m
+              
+- name: Create eBPF AI Application
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: ebpf-ai
+        namespace: "{{ argocd.namespace }}"
+        labels:
+          app.kubernetes.io/name: ebpf-ai
+          app.kubernetes.io/part-of: ebpf-ai-system
+        finalizers:
+          - resources-finalizer.argocd.argoproj.io
+      spec:
+        project: default
+        source:
+          repoURL: "{{ applications.ebpf_ai.git_repo }}"
+          targetRevision: "{{ applications.ebpf_ai.git_branch }}"
+          path: "{{ applications.ebpf_ai.git_path }}"
+          helm:
+            valueFiles:
+              - values.yaml
+            parameters:
+              - name: global.namespace
+                value: "{{ applications.ebpf_ai.namespace }}"
+              - name: mlDetector.replicaCount
+                value: "{{ resources.ml_detector.replicas }}"
+              - name: autoscaling.enabled
+                value: "true"
+              - name: redis.enabled
+                value: "true"
+              - name: prometheus.enabled
+                value: "true"
+              - name: grafana.enabled
+                value: "true"
+        destination:
+          server: https://kubernetes.default.svc
+          namespace: "{{ applications.ebpf_ai.namespace }}"
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+            allowEmpty: false
+          syncOptions:
+            - CreateNamespace=true
+            - PrunePropagationPolicy=foreground
+            - PruneLast=true
+          retry:
+            limit: 5
+            backoff:
+              duration: 5s
+              factor: 2
+              maxDuration: 3m
+        revisionHistoryLimit: 10
+        
+- name: Wait for ArgoCD application to be created
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: ebpf-ai
+    namespace: "{{ argocd.namespace }}"
+    wait: true
+    wait_timeout: 60
+    
+- name: Display GitOps setup status
+  debug:
+    msg:
+      - "🚀 ArgoCD Applications configured successfully!"
+      - "📋 App-of-Apps: ebpf-ai-apps"
+      - "🤖 Main Application: ebpf-ai"
+      - "🔄 Sync Policy: Automated (prune + self-heal enabled)"
+      - "📦 Git Repository: {{ applications.ebpf_ai.git_repo }}"
+      - "🌿 Branch: {{ applications.ebpf_ai.git_branch }}"

@@ -15,8 +15,7 @@
     chart_ref: prometheus-community/prometheus-operator-crds
     release_namespace: monitoring
     create_namespace: true
-    wait: true
-    timeout: 300s
+    wait: false
     
 - name: Install kube-prometheus-stack
   kubernetes.core.helm:
@@ -26,13 +25,8 @@
     values:
       prometheus:
         prometheusSpec:
-          storageSpec:
-            volumeClaimTemplate:
-              spec:
-                accessModes: ["ReadWriteOnce"]
-                resources:
-                  requests:
-                    storage: 10Gi
+          # Use emptyDir to avoid hostPath issues in Minikube
+          storageSpec: {}
           additionalScrapeConfigs:
             - job_name: 'ml-detector'
               static_configs:
@@ -50,7 +44,7 @@
         enabled: true
         adminPassword: admin123
         service:
-          type: LoadBalancer
+          type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
         persistence:
           enabled: false
         plugins:
@@ -76,41 +70,56 @@
             provider:
               foldersFromFilesStructure: true
       alertmanager:
-        enabled: true
-        alertmanagerSpec:
-          storage:
-            volumeClaimTemplate:
-              spec:
-                accessModes: ["ReadWriteOnce"]
-                resources:
-                  requests:
-                    storage: 5Gi
-    wait: true
-    timeout: 600s
+        enabled: false  # Disable to avoid hostPath issues in Minikube
+    wait: false
     
-- name: Wait for Prometheus to be ready
+- name: Wait for Prometheus pods to be running (simple validation)
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: StatefulSet
-    name: prometheus-kube-prometheus-stack-prometheus
+    api_version: v1
+    kind: Pod
     namespace: monitoring
+    label_selectors:
+      - app.kubernetes.io/name=prometheus
     wait: true
     wait_condition:
       type: Ready
-    wait_timeout: 300
-    
-- name: Wait for Grafana to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: kube-prometheus-stack-grafana
-    namespace: monitoring
-    wait: true
-    wait_condition:
-      type: Available
       status: "True"
     wait_timeout: 300
     
+- name: Create Grafana Ingress for UI access
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: grafana-ingress
+        namespace: monitoring
+        annotations:
+          nginx.ingress.kubernetes.io/rewrite-target: /
+      spec:
+        ingressClassName: nginx
+        rules:
+        - host: grafana.local
+          http:
+            paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: kube-prometheus-stack-grafana
+                  port:
+                    number: 80
+        - http:
+            paths:
+            - path: /grafana
+              pathType: Prefix
+              backend:
+                service:
+                  name: kube-prometheus-stack-grafana
+                  port:
+                    number: 80
+    state: present
+
 - name: Get Grafana service information
   kubernetes.core.k8s_info:
     api_version: v1
@@ -122,9 +131,10 @@
 - name: Display monitoring stack information
   debug:
     msg:
-      - "📊 Prometheus + Grafana stack installed successfully!"
+      - "📊 Prometheus + Grafana stack installation completed!"
       - "🎯 Prometheus: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
-      - "📈 Grafana: http://{{ grafana_service.resources[0].status.loadBalancer.ingress[0].ip | default('pending') }}"
+      - "📈 Grafana: {{ grafana_service.resources[0].status.loadBalancer.ingress[0].ip | default('Service starting...') if grafana_service.resources is defined else 'Service starting...' }}"
       - "👤 Grafana Login: admin / admin123"
       - "🔔 AlertManager: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
       - "💡 Port forward Grafana: kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80"
+      - "⏳ Note: Services may take a few minutes to be fully ready"

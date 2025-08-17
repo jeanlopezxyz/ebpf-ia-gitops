@@ -4,65 +4,89 @@
     name: metallb
     repo_url: https://metallb.github.io/metallb
     
-- name: Install MetalLB via Helm
+- name: Install MetalLB via Helm with disabled webhooks
   kubernetes.core.helm:
     name: metallb
     chart_ref: metallb/metallb
     release_namespace: metallb-system
     create_namespace: true
+    values:
+      # Disable all webhooks that cause issues in Minikube
+      controller:
+        webhookValidation:
+          enabled: false
+        podSecurityPolicy:
+          enabled: false
+      speaker:
+        frr:
+          enabled: false
+        podSecurityPolicy:
+          enabled: false
+      # Use legacy ConfigMap mode instead of CRDs
+      crds:
+        validationFailurePolicy: Ignore
     wait: true
-    timeout: 300s
     
-- name: Wait for MetalLB controller to be ready
+- name: Wait for MetalLB pods to be running
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: metallb-controller
+    api_version: v1
+    kind: Pod
     namespace: metallb-system
+    label_selectors:
+      - app.kubernetes.io/name=metallb
     wait: true
     wait_condition:
-      type: Available
+      type: Ready
       status: "True"
-    wait_timeout: 300
-    
-- name: Wait for MetalLB speaker to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: DaemonSet
-    name: metallb-speaker
-    namespace: metallb-system
-    wait: true
     wait_timeout: 300
     
 - name: Get minikube IP range for MetalLB
   command: minikube ip --profile {{ minikube.profile }}
   register: minikube_ip
   
-- name: Create MetalLB IP pool configuration
+- name: Wait for MetalLB to stabilize
+  pause:
+    seconds: 60
+    
+- name: Create MetalLB IP Address Pool (modern CRD)
   kubernetes.core.k8s:
     definition:
       apiVersion: metallb.io/v1beta1
       kind: IPAddressPool
       metadata:
-        name: default-pool
+        name: "{{ deployment_mode.type }}-pool"
         namespace: metallb-system
       spec:
         addresses:
-          - "{{ network.metallb_ip_range }}"
+        - "{{ network.metallb_ip_range }}"
     state: present
-    
-- name: Create MetalLB L2Advertisement
+
+- name: Create MetalLB L2 Advertisement  
   kubernetes.core.k8s:
     definition:
       apiVersion: metallb.io/v1beta1
       kind: L2Advertisement
       metadata:
-        name: default-l2advertisement
+        name: "{{ deployment_mode.type }}-l2"
         namespace: metallb-system
       spec:
         ipAddressPools:
-          - default-pool
+        - "{{ deployment_mode.type }}-pool"
     state: present
+    
+- name: Restart MetalLB controller to pickup config
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    name: metallb-controller
+    namespace: metallb-system
+    state: present
+    definition:
+      spec:
+        template:
+          metadata:
+            annotations:
+              kubectl.kubernetes.io/restartedAt: "{{ ansible_date_time.iso8601 }}"
     
 - name: Display MetalLB status
   debug:

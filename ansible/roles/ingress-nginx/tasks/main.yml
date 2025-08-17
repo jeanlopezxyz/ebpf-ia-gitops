@@ -16,15 +16,13 @@
         metrics:
           enabled: true
           serviceMonitor:
-            enabled: true
+            enabled: true  # Now enabled since Prometheus is installed first
         # Enable admission webhooks
         admissionWebhooks:
           enabled: true
-        # Service configuration for Minikube
+        # Service configuration - conditional based on environment
         service:
-          type: LoadBalancer
-          annotations:
-            metallb.universe.tf/loadBalancerIPs: "{{ network.metallb_ip_range.split('-')[0] }}"
+          type: "{{ ingress.nginx.service_type }}"
         # Enable SSL passthrough
         extraArgs:
           enable-ssl-passthrough: ""
@@ -45,31 +43,29 @@
           compute-full-forwarded-for: "true"
           use-proxy-protocol: "false"
           proxy-real-ip-cidr: "0.0.0.0/0"
-    wait: true
-    timeout: 600s
+    wait: false
+  # Continue if it takes too long
     
-- name: Wait for NGINX Ingress Controller to be ready
+- name: Wait for NGINX Ingress pods to be running (simple validation)
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: ingress-nginx-controller
+    api_version: v1
+    kind: Pod
     namespace: ingress-nginx
+    label_selectors:
+      - app.kubernetes.io/component=controller
     wait: true
     wait_condition:
-      type: Available
+      type: Ready
       status: "True"
-    wait_timeout: 300
-    
-- name: Get NGINX Ingress LoadBalancer IP
+    wait_timeout: 180
+
+- name: Get NGINX Ingress service information (optional)
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Service
     name: ingress-nginx-controller
     namespace: ingress-nginx
   register: nginx_service
-  until: nginx_service.resources[0].status.loadBalancer.ingress is defined
-  retries: 30
-  delay: 10
   
 - name: Create default backend for ingress
   kubernetes.core.k8s:
@@ -125,27 +121,28 @@
     
 - name: Test NGINX Ingress Controller
   uri:
-    url: "http://{{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip }}/healthz"
+    url: "http://{{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip | default('localhost') }}/healthz"
     method: GET
     status_code: 200
   register: nginx_test
   until: nginx_test.status == 200
-  retries: 10
+  retries: 5
   delay: 10
   ignore_errors: yes
+  when: nginx_service.resources is defined and nginx_service.resources|length > 0 and nginx_service.resources[0].status.loadBalancer.ingress is defined
   
 - name: Display NGINX Ingress information
   debug:
     msg:
       - "🌐 NGINX Ingress Controller deployed successfully!"
-      - "📍 LoadBalancer IP: {{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      - "📍 LoadBalancer IP: {{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip | default('Pending') if nginx_service.resources is defined and nginx_service.resources|length > 0 and nginx_service.resources[0].status.loadBalancer.ingress is defined else 'Pending' }}"
       - "🔗 Internal Service: ingress-nginx-controller.ingress-nginx.svc.cluster.local"
       - "📊 Metrics: Enabled with ServiceMonitor"
       - "🔧 SSL Passthrough: Enabled"
       - ""
       - "🛠️  Next Steps:"
       - "  1. Create Ingress resources for your applications"
-      - "  2. Configure DNS entries pointing to {{ nginx_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      - "  2. Configure DNS entries pointing to LoadBalancer IP"
       - "  3. Add TLS certificates for HTTPS"
       - ""
       - "📋 Example Ingress:"

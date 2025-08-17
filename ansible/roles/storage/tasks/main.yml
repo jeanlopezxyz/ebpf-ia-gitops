@@ -1,11 +1,12 @@
 ---
-- name: Check Minikube driver type
-  command: minikube profile list --output json
-  register: minikube_profiles
+- name: Get Minikube driver type
+  command: minikube config get driver --profile {{ minikube.profile }}
+  register: minikube_driver_cmd
+  ignore_errors: yes
   
-- name: Parse Minikube driver
+- name: Set driver fact
   set_fact:
-    minikube_driver: "{{ (minikube_profiles.stdout | from_json) | selectattr('Name', 'equalto', minikube.profile) | map(attribute='Config') | first | json_query('Driver') }}"
+    minikube_driver: "{{ minikube_driver_cmd.stdout | default('podman') }}"
     
 - name: Display storage configuration info
   debug:
@@ -24,7 +25,24 @@
   command: minikube addons enable volumesnapshots --profile {{ minikube.profile }}
   ignore_errors: yes
 
-- name: Create enhanced StorageClass for registry
+- name: Create enhanced StorageClass for persistent data
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: persistent-storage
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "false"
+      provisioner: k8s.io/minikube-hostpath
+      volumeBindingMode: Immediate
+      reclaimPolicy: Retain  # Keep data even if PVC is deleted
+      allowVolumeExpansion: true
+      parameters:
+        type: hostPath
+    state: present
+
+- name: Create registry-specific StorageClass (alias)
   kubernetes.core.k8s:
     definition:
       apiVersion: storage.k8s.io/v1
@@ -35,7 +53,7 @@
           storageclass.kubernetes.io/is-default-class: "false"
       provisioner: k8s.io/minikube-hostpath
       volumeBindingMode: Immediate
-      reclaimPolicy: Retain  # Keep data even if PVC is deleted
+      reclaimPolicy: Retain
       allowVolumeExpansion: true
       parameters:
         type: hostPath
