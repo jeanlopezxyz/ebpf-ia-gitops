@@ -1,7 +1,7 @@
 # Tekton Pipelines Configuration
 tekton:
   # Tekton Pipelines version
-  version: "v0.63.0"
+  version: "latest"
   
   # Resource configuration
   controller:
