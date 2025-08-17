@@ -11,17 +11,15 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
-    targetRevision: main
-    path: helm/charts/tekton-pipelines
+    repoURL: https://cdfoundation.github.io/tekton-helm-chart
+    chart: tekton-pipeline
+    targetRevision: 1.2.0
     helm:
-      valueFiles:
-        - values.yaml
       parameters:
-        - name: tekton.version
-          value: "v0.63.0"
-        - name: pipelines.registry.url
-          value: "192.168.67.2:5000"
+        - name: controller.resources.requests.cpu
+          value: "100m"
+        - name: controller.resources.requests.memory
+          value: "256Mi"
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton-pipelines
