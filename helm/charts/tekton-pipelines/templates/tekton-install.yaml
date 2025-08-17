@@ -28,7 +28,7 @@ spec:
         - -c
         - |
           echo "Installing Tekton Pipelines {{ .Values.tekton.version }}..."
-          kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/{{ .Values.tekton.version }}/release.yaml
+          kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
           echo "Tekton Pipelines installed successfully"
 ---
 apiVersion: v1
