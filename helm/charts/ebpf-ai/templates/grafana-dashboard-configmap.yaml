@@ -61,7 +61,7 @@ data:
             "targets": [
               {
                 "expr": "ml_model_accuracy",
-                "legendFormat": "{{model_name}}"
+                "legendFormat": "Model Accuracy"
               }
             ],
             "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
@@ -73,11 +73,11 @@ data:
             "targets": [
               {
                 "expr": "rate(container_cpu_usage_seconds_total{namespace=\"ebpf-security\"}[5m])",
-                "legendFormat": "CPU - {{pod}}"
+                "legendFormat": "CPU - {{ "{{" }}pod{{ "}}" }}"
               },
               {
                 "expr": "container_memory_usage_bytes{namespace=\"ebpf-security\"} / 1024 / 1024",
-                "legendFormat": "Memory MB - {{pod}}"
+                "legendFormat": "Memory MB - {{ "{{" }}pod{{ "}}" }}"
               }
             ],
             "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
