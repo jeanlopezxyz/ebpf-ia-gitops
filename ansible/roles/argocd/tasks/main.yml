@@ -57,23 +57,22 @@
     namespace: "{{ argocd.namespace }}"
   register: argocd_service
   
-- name: Create SSH secret for Git repository access
-  kubernetes.core.k8s:
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: git-ssh-key
-        namespace: "{{ argocd.namespace }}"
-        labels:
-          argocd.argoproj.io/secret-type: repository
-      type: Opaque
-      stringData:
-        type: git
-        url: "{{ argocd.git_repo_url }}"
-        sshPrivateKey: "{{ lookup('file', ansible_env.HOME + '/.ssh/id_ed25519') }}"
-    state: present
-  when: ansible_env.HOME is defined
+# Git Repository Access Configuration
+#
+# DEVELOPMENT/PUBLIC REPOS: Uses HTTPS (current configuration)
+#   - No SSH keys required
+#   - Suitable for public repositories
+#   - Simpler setup and more secure for public projects
+#
+# PRODUCTION/PRIVATE REPOS: Use SSH (manual configuration required)
+#   - For private repositories that require SSH access
+#   - Configure manually after bootstrap:
+#     kubectl create secret generic git-ssh-key \
+#       --from-file=ssh-privatekey=~/.ssh/id_ed25519 \
+#       --from-file=ssh-publickey=~/.ssh/id_ed25519.pub \
+#       -n argocd
+#   - Then add label: kubectl label secret git-ssh-key argocd.argoproj.io/secret-type=repository -n argocd
+#   - Update applications to use: repoURL: "git@github.com:user/repo.git"
   
 - name: Create ArgoCD Ingress for UI access
   kubernetes.core.k8s:
