@@ -33,6 +33,7 @@ spec:
     - name: fetch-source
       taskRef:
         name: git-clone
+        kind: ClusterTask
       workspaces:
         - name: output
           workspace: shared-data
@@ -45,6 +46,7 @@ spec:
     - name: build-image
       taskRef:
         name: buildah
+        kind: ClusterTask
       runAfter:
         - fetch-source
       workspaces:

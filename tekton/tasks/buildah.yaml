@@ -1,9 +1,8 @@
 ---
 apiVersion: tekton.dev/v1
-kind: Task
+kind: ClusterTask
 metadata:
   name: buildah
-  namespace: ebpf-security
   labels:
     app.kubernetes.io/version: "0.7"
   annotations:
