@@ -34,5 +34,3 @@ spec:
       value: 192.168.67.2:5000
     - name: image-name
       value: ml-detector
-    - name: image-tag
-      value: latest

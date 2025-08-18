@@ -5,6 +5,7 @@ resources:
   - rbac/pipeline-serviceaccount.yaml
   - tasks/git-clone.yaml
   - tasks/buildah.yaml
+  - tasks/generate-tag.yaml
   - tasks/argocd-sync.yaml
   - pipelines/ml-detector-pipeline.yaml
   - pipelines/ebpf-monitor-pipeline.yaml
