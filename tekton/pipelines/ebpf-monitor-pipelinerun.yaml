@@ -11,6 +11,9 @@ spec:
     name: ebpf-monitor-ci
   taskRunTemplate:
     serviceAccountName: pipeline-sa
+    podTemplate:
+      securityContext:
+        fsGroup: 65532
   workspaces:
     - name: shared-data
       volumeClaimTemplate:
