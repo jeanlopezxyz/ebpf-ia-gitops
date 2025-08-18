@@ -17,17 +17,18 @@ spec:
     - name: image-tag
       description: Generated semantic version tag
   steps:
-    - name: bump-tag
+    - name: generate
       image: alpine/git
       workingDir: $(workspaces.source.path)
       script: |
-        set -e
-        git config user.name "$(params.git-user-name)"
-        git config user.email "$(params.git-user-email)"
-        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
-        IFS='.' read -r major minor patch <<<"${LAST_TAG#v}"
-        patch=$((patch+1))
-        NEW_TAG="v$major.$minor.$patch"
-        git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-        git push origin "$NEW_TAG"
-        echo -n "$NEW_TAG" > $(results.image-tag.path)
+        #!/usr/bin/env sh
+        set -eu
+        # Prefer short SHA + UTC timestamp to avoid needing git push
+        if git rev-parse --short HEAD >/dev/null 2>&1; then
+          SHORT_SHA=$(git rev-parse --short HEAD)
+        else
+          SHORT_SHA=unknown
+        fi
+        STAMP=$(date -u +%Y%m%d%H%M%S)
+        NEW_TAG="sha-${SHORT_SHA}-${STAMP}"
+        printf "%s" "$NEW_TAG" > $(results.image-tag.path)

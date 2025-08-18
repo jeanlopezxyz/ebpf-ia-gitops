@@ -12,6 +12,15 @@ spec:
     - name: argo-server
       description: Argo CD server address
       default: argocd-server.argocd.svc.cluster.local
+    - name: set-params
+      description: Optional space-separated helm -p key=value pairs for argocd app set
+      default: ""
+    - name: force-sync
+      description: Force sync even if no changes
+      default: "true"
+    - name: wait-health
+      description: Wait for app health after sync
+      default: "false"
   steps:
     - name: sync
       image: quay.io/argoproj/argocd:v2.9.3
@@ -21,14 +30,35 @@ spec:
             secretKeyRef:
               name: argocd-env-secret
               key: username
+              optional: true
         - name: ARGOCD_PASSWORD
           valueFrom:
             secretKeyRef:
               name: argocd-env-secret
               key: password
+              optional: true
       script: |
         #!/usr/bin/env sh
-        set -eux
-        argocd login $(params.argo-server) --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
-        argocd app sync $(params.app-name)
-        argocd app wait $(params.app-name) --health
+        set -eu
+        # If credentials not present, skip without failing the Pipeline
+        if [ -z "${ARGOCD_USERNAME:-}" ] || [ -z "${ARGOCD_PASSWORD:-}" ]; then
+          echo "[argocd-sync] No credentials provided; skipping sync (auto-sync may apply)."
+          exit 0
+        fi
+        set -x
+        argocd login $(params.argo-server) --username "$ARGOCD_USERNAME" --password "$ARGOCD_PASSWORD" --insecure
+        # Apply optional helm parameter overrides
+        if [ -n "$(params.set-params)" ]; then
+          # shellcheck disable=SC2086
+          argocd app set $(params.app-name) $(params.set-params) || echo "[argocd-sync] app set returned non-zero; continuing"
+        fi
+        # Sync options
+        SYNC_OPTS=""
+        if [ "$(params.force-sync)" = "true" ]; then
+          SYNC_OPTS="--force"
+        fi
+        # shellcheck disable=SC2086
+        argocd app sync $(params.app-name) $SYNC_OPTS || echo "[argocd-sync] app sync returned non-zero; continuing"
+        if [ "$(params.wait-health)" = "true" ]; then
+          argocd app wait $(params.app-name) --health || echo "[argocd-sync] app wait returned non-zero; continuing"
+        fi

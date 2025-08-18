@@ -46,7 +46,7 @@ mlDetector:
     
   readinessProbe:
     httpGet:
-      path: /ready
+      path: /health
       port: 5000
     initialDelaySeconds: 5
     periodSeconds: 5
@@ -243,6 +243,7 @@ ingress:
         prometheus: /prometheus
         argocd: /argocd
   registry:
+    enabled: false
     host: registry.local
   tls: []
   annotations: {}

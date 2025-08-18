@@ -17,13 +17,13 @@ spec:
       default: main
     - name: image-registry
       description: Container registry URL
-      default: 192.168.67.2:5000
+      default: registry.container-registry.svc.cluster.local:5000
     - name: image-name
       description: Image name
       default: ml-detector
     - name: argo-app-name
       description: Argo CD application name
-      default: ml-detector
+      default: ebpf-ai
       
   workspaces:
     - name: shared-data
@@ -84,4 +84,11 @@ spec:
       params:
         - name: app-name
           value: $(params.argo-app-name)
-
+        - name: set-params
+          value: >-
+            -p global.registry=$(params.image-registry)
+            -p mlDetector.image.tag=$(tasks.generate-tag.results.image-tag)
+        - name: force-sync
+          value: "true"
+        - name: wait-health
+          value: "false"

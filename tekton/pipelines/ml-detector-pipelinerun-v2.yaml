@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: ml-detector-build
+  name: ml-detector-build-v2
   namespace: ebpf-security
   labels:
     app.kubernetes.io/name: ml-detector-build
@@ -34,3 +34,6 @@ spec:
       value: registry.container-registry.svc.cluster.local:5000
     - name: image-name
       value: ml-detector
+    - name: argo-app-name
+      value: ebpf-ai
+
