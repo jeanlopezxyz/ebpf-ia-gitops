@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: generate-tag
+spec:
+  params:
+    - name: git-user-name
+      description: Name to use for git commits
+      default: tekton-bot
+    - name: git-user-email
+      description: Email to use for git commits
+      default: tekton@example.com
+  workspaces:
+    - name: source
+      description: Workspace with the cloned git repository
+  results:
+    - name: image-tag
+      description: Generated semantic version tag
+  steps:
+    - name: bump-tag
+      image: alpine/git
+      workingDir: $(workspaces.source.path)
+      script: |
+        set -e
+        git config user.name "$(params.git-user-name)"
+        git config user.email "$(params.git-user-email)"
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+        IFS='.' read -r major minor patch <<<"${LAST_TAG#v}"
+        patch=$((patch+1))
+        NEW_TAG="v$major.$minor.$patch"
+        git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+        git push origin "$NEW_TAG"
+        echo -n "$NEW_TAG" > $(results.image-tag.path)

@@ -21,9 +21,6 @@ spec:
     - name: image-name
       description: Image name
       default: ml-detector
-    - name: image-tag
-      description: Image tag
-      default: latest
     - name: argo-app-name
       description: Argo CD application name
       default: ml-detector
@@ -52,17 +49,26 @@ spec:
         - name: revision
           value: $(params.git-revision)
 
-    - name: build-image
+    - name: generate-tag
       taskRef:
-        name: buildah
+        name: generate-tag
       runAfter:
         - fetch-source
       workspaces:
         - name: source
           workspace: shared-data
+
+    - name: build-image
+      taskRef:
+        name: buildah
+      runAfter:
+        - generate-tag
+      workspaces:
+        - name: source
+          workspace: shared-data
       params:
         - name: IMAGE
-          value: $(params.image-registry)/$(params.image-name):$(params.image-tag)
+          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-tag.results.image-tag)
         - name: DOCKERFILE
           value: ./applications/ml-detector/Dockerfile
         - name: CONTEXT
