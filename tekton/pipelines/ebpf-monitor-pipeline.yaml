@@ -32,8 +32,14 @@ spec:
   tasks:
     - name: fetch-source
       taskRef:
-        name: git-clone
-        kind: ClusterTask
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: git-clone
+        - name: namespace
+          value: ebpf-security
       workspaces:
         - name: output
           workspace: shared-data
@@ -45,8 +51,14 @@ spec:
           
     - name: build-image
       taskRef:
-        name: buildah
-        kind: ClusterTask
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: buildah
+        - name: namespace
+          value: ebpf-security
       runAfter:
         - fetch-source
       workspaces:
