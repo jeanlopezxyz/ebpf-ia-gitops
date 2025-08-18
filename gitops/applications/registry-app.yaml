@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ebpf-ai
+  name: container-registry
   namespace: argocd
   labels:
-    app.kubernetes.io/name: ebpf-ai
+    app.kubernetes.io/name: container-registry
     app.kubernetes.io/part-of: ebpf-ai-system
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -13,26 +13,10 @@ spec:
   source:
     repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
     targetRevision: main
-    path: helm/charts/ebpf-ai
-    helm:
-      valueFiles:
-        - values.yaml
-      parameters:
-        - name: global.namespace
-          value: ebpf-security
-        - name: mlDetector.replicaCount
-          value: "2"
-        - name: autoscaling.enabled
-          value: "true"
-        - name: redis.enabled
-          value: "true"
-        - name: prometheus.enabled
-          value: "false"
-        - name: grafana.enabled
-          value: "false"
+    path: gitops/registry
   destination:
     server: https://kubernetes.default.svc
-    namespace: ebpf-security
+    namespace: container-registry
   syncPolicy:
     automated:
       prune: true

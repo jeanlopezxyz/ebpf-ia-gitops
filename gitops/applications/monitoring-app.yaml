@@ -1,0 +1,89 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: monitoring-stack
+    app.kubernetes.io/part-of: ebpf-ai-system
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 58.3.2
+    helm:
+      values: |
+        alertmanager:
+          enabled: true
+          alertmanagerSpec:
+            storage: {}
+        prometheus:
+          prometheusSpec:
+            storageSpec: {}
+          server:
+            service:
+              type: NodePort
+            ingress:
+              enabled: true
+              ingressClassName: nginx
+              hosts:
+                - prometheus.local
+        grafana:
+          enabled: true
+          adminPassword: admin123
+          service:
+            type: NodePort
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            hosts:
+              - grafana.local
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              searchNamespace: true
+        # Extra scrape jobs for app namespaces
+        additionalPrometheusRulesMap: {}
+        prometheusOperator:
+          admissionWebhooks:
+            enabled: true
+        # Extra scrape configs (for ml-detector and ebpf-monitor)
+        prometheus-node-exporter:
+          enabled: true
+        prometheus:
+          server:
+            extraScrapeConfigs: |
+              - job_name: 'ml-detector'
+                static_configs:
+                  - targets: ['ml-detector.ebpf-security.svc.cluster.local:5000']
+                metrics_path: '/metrics'
+                scrape_interval: 30s
+              - job_name: 'ebpf-monitor'
+                static_configs:
+                  - targets: ['ebpf-monitor.ebpf-security.svc.cluster.local:8800']
+                metrics_path: '/metrics'
+                scrape_interval: 15s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10
+

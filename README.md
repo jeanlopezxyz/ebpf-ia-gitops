@@ -84,6 +84,16 @@ argocd app get ebpf-ai
 3. **Push to repository**: `git push origin main`
 4. **ArgoCD syncs automatically** (or manually trigger in UI)
 
+## 🧭 Ownership: Ansible vs Argo CD
+
+- **Ansible (Day‑0)**: Minikube cluster, CNI (Cilium), Ingress (NGINX), Storage, Argo CD install.
+- **Argo CD (Day‑1/2)**: Everything inside Kubernetes via Helm/GitOps.
+  - Tekton platform (helm chart) and CI pipelines (`helm/charts/tekton-ci`).
+  - App `ebpf-ai` (`helm/charts/ebpf-ai`, includes Prometheus/Grafana deps).
+  - Dashboards JSON in `helm/charts/ebpf-ai/grafana/*.json` (loaded by Grafana sidecar).
+  - Container Registry via `gitops/applications/registry-app.yaml`.
+- Defaults: `registry.enabled: false` and `prom_stack.enabled: false` in Ansible to avoid duplication with Argo CD.
+
 ## 📊 Monitoring & Access
 
 - **ArgoCD UI**: `https://localhost:8080`

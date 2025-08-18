@@ -30,14 +30,6 @@
       include_role:
         name: storage
         
-    - name: Install Container Registry
-      include_role:
-        name: registry
-        
-    - name: Install Prometheus + Grafana Stack
-      include_role:
-        name: prometheus
-        
     - name: Install NGINX Ingress Controller
       include_role:
         name: ingress-nginx

@@ -39,3 +39,8 @@
 - Do not commit secrets. Use Kubernetes Secrets and values overrides.
 - Centralize env in `ansible/group_vars/all.yml` (e.g., `deployment_mode.type: lab|prod`, registry, ingress hosts).
 - Run containers as non-root (already enforced in Dockerfiles/Tekton); keep it.
+
+## Ownership & Responsibilities
+- Ansible (Day-0): Minikube, CNI (Cilium), Ingress (NGINX), Storage, Argo CD install.
+- Argo CD (Day-1/2): Tekton platform (Helm), CI pipelines (`helm/charts/tekton-ci`), app `ebpf-ai` (Helm), dashboards (`helm/charts/ebpf-ai/grafana/*.json`), registry (`gitops/registry`).
+- Defaults: `registry.enabled: false`, `prom_stack.enabled: false` in Ansible; managed via Argo CD.

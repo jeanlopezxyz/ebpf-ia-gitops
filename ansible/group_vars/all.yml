@@ -56,11 +56,7 @@ applications:
     git_path: "helm/charts/ebpf-ai"
     git_branch: "main"
     
-# Docker registry
-registry:
-  enabled: true
-  port: 30050
-  storage_size: "20Gi"
+  
   
 # Ingress configuration
 ingress:
