@@ -31,7 +31,14 @@ spec:
   workspaces:
     - name: shared-data
       description: Shared workspace for source code
-      
+
+  taskRunTemplate:
+    podTemplate:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+
   tasks:
     - name: fetch-source
       taskRef:
