@@ -71,3 +71,4 @@ spec:
       params:
         - name: app-name
           value: $(params.argo-app-name)
+

@@ -10,7 +10,7 @@ spec:
   pipelineRef:
     name: ebpf-monitor-ci
   taskRunTemplate:
-    serviceAccountName: default
+    serviceAccountName: pipeline-sa
   workspaces:
     - name: shared-data
       volumeClaimTemplate:
