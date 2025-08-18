@@ -9,6 +9,8 @@ metadata:
 spec:
   pipelineRef:
     name: ebpf-monitor-ci
+  taskRunTemplate:
+    serviceAccountName: default
   workspaces:
     - name: shared-data
       volumeClaimTemplate:

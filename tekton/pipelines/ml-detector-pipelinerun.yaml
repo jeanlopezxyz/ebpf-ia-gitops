@@ -9,6 +9,8 @@ metadata:
 spec:
   pipelineRef:
     name: ml-detector-ci
+  taskRunTemplate:
+    serviceAccountName: default
   workspaces:
     - name: shared-data
       volumeClaimTemplate:
