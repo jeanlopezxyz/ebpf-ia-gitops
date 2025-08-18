@@ -24,6 +24,9 @@ spec:
     - name: image-tag
       description: Image tag
       default: latest
+    - name: argo-app-name
+      description: Argo CD application name
+      default: ml-detector
       
   workspaces:
     - name: shared-data
@@ -32,14 +35,7 @@ spec:
   tasks:
     - name: fetch-source
       taskRef:
-        resolver: cluster
-        params:
-        - name: kind
-          value: task
-        - name: name
-          value: git-clone
-        - name: namespace
-          value: ebpf-security
+        name: git-clone
       workspaces:
         - name: output
           workspace: shared-data
@@ -48,17 +44,10 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.git-revision)
-          
+
     - name: build-image
       taskRef:
-        resolver: cluster
-        params:
-        - name: kind
-          value: task
-        - name: name
-          value: buildah
-        - name: namespace
-          value: ebpf-security
+        name: buildah
       runAfter:
         - fetch-source
       workspaces:
@@ -73,3 +62,12 @@ spec:
           value: ./applications/ml-detector
         - name: TLSVERIFY
           value: "false"
+
+    - name: sync-deploy
+      taskRef:
+        name: argocd-sync
+      runAfter:
+        - build-image
+      params:
+        - name: app-name
+          value: $(params.argo-app-name)

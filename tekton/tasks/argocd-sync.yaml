@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: argocd-sync
+  labels:
+    app.kubernetes.io/version: "0.1"
+spec:
+  description: Sync an Argo CD application
+  params:
+    - name: app-name
+      description: Name of the Argo CD application to sync
+    - name: argo-server
+      description: Argo CD server address
+      default: argocd-server.argocd.svc.cluster.local
+  steps:
+    - name: sync
+      image: quay.io/argoproj/argocd:v2.9.3
+      env:
+        - name: ARGOCD_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: argocd-env-secret
+              key: username
+        - name: ARGOCD_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: argocd-env-secret
+              key: password
+      script: |
+        #!/usr/bin/env sh
+        set -eux
+        argocd login $(params.argo-server) --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
+        argocd app sync $(params.app-name)
+        argocd app wait $(params.app-name) --health

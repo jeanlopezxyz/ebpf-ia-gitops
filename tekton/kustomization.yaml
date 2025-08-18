@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - tasks/git-clone.yaml
   - tasks/buildah.yaml
+  - tasks/argocd-sync.yaml
   - pipelines/ml-detector-pipeline.yaml
   - pipelines/ebpf-monitor-pipeline.yaml
   - pipelines/ml-detector-pipelinerun.yaml
