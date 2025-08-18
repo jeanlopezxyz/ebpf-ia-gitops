@@ -9,7 +9,7 @@ resources:
   - tasks/argocd-sync.yaml
   - pipelines/ml-detector-pipeline.yaml
   - pipelines/ebpf-monitor-pipeline.yaml
-  - pipelines/ml-detector-pipelinerun-v2.yaml
-  - pipelines/ebpf-monitor-pipelinerun-v2.yaml
+  - pipelines/ml-detector-pipelinerun-v3.yaml
+  - pipelines/ebpf-monitor-pipelinerun-v3.yaml
 
 namespace: ebpf-security
