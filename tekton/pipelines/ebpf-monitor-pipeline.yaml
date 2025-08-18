@@ -24,6 +24,9 @@ spec:
     - name: image-tag
       description: Image tag
       default: latest
+    - name: argo-app-name
+      description: Argo CD application name
+      default: ebpf-monitor
       
   workspaces:
     - name: shared-data
@@ -59,3 +62,12 @@ spec:
           value: ./applications/ebpf-monitor
         - name: TLSVERIFY
           value: "false"
+
+    - name: sync-deploy
+      taskRef:
+        name: argocd-sync
+      runAfter:
+        - build-image
+      params:
+        - name: app-name
+          value: $(params.argo-app-name)
