@@ -81,7 +81,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: registry-ingress
-  namespace: container-registry
+  namespace: kube-system
   labels:
     app: registry
     component: ingress
