@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: ml-detector-ci
@@ -34,7 +34,7 @@ spec:
       taskRef:
         name: git-clone
         kind: Task
-        apiVersion: tekton.dev/v1beta1
+        apiVersion: tekton.dev/v1beta1beta1
       workspaces:
         - name: output
           workspace: shared-data
@@ -48,7 +48,7 @@ spec:
       taskRef:
         name: buildah
         kind: Task
-        apiVersion: tekton.dev/v1beta1
+        apiVersion: tekton.dev/v1beta1beta1
       runAfter:
         - fetch-source
       workspaces:
