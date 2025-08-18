@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ebpf-monitor-ci
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ebpf-monitor-ci
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  description: CI pipeline for eBPF Monitor application
+  params:
+    - name: git-url
+      description: Git repository URL
+      default: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      description: Git revision to build
+      default: main
+    - name: image-registry
+      description: Container registry URL
+      default: {{ .Values.imageRegistry | quote }}
+    - name: image-name
+      description: Image name
+      default: ebpf-monitor
+    - name: argo-app-name
+      description: Argo CD application name
+      default: {{ .Values.argoAppName | quote }}
+  workspaces:
+    - name: shared-data
+      description: Shared workspace for source code
+  taskRunTemplate:
+    podTemplate:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-data
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+    - name: generate-tag
+      taskRef:
+        name: generate-tag
+      runAfter:
+        - fetch-source
+      workspaces:
+        - name: source
+          workspace: shared-data
+    - name: build-image
+      taskRef:
+        name: buildah
+      runAfter:
+        - generate-tag
+      workspaces:
+        - name: source
+          workspace: shared-data
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-tag.results.image-tag)
+        - name: DOCKERFILE
+          value: ./applications/ebpf-monitor/Dockerfile
+        - name: CONTEXT
+          value: ./applications/ebpf-monitor
+        - name: TLSVERIFY
+          value: "false"
+    - name: sync-deploy
+      taskRef:
+        name: argocd-sync
+      runAfter:
+        - build-image
+      params:
+        - name: app-name
+          value: $(params.argo-app-name)
+        - name: set-params
+          value: >-
+            -p global.registry=$(params.image-registry)
+            -p ebpfMonitor.image.tag=$(tasks.generate-tag.results.image-tag)
+        - name: force-sync
+          value: "true"
+        - name: wait-health
+          value: "false"

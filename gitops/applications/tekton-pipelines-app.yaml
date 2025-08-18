@@ -13,7 +13,9 @@ spec:
   source:
     repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
     targetRevision: main
-    path: tekton
+    path: helm/charts/tekton-ci
+    helm:
+      valueFiles: []
   destination:
     server: https://kubernetes.default.svc
     namespace: ebpf-security

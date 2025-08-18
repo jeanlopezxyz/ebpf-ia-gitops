@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  labels:
+    app.kubernetes.io/version: "0.9"
+spec:
+  description: Clone a git repo into the output workspace.
+  workspaces:
+    - name: output
+      description: The git repo will be cloned into this Workspace.
+    - name: ssh-directory
+      optional: true
+    - name: basic-auth
+      optional: true
+    - name: ssl-ca-directory
+      optional: true
+  params:
+    - name: url
+      type: string
+      description: Repository URL to clone from.
+    - name: revision
+      type: string
+      description: Revision to checkout.
+      default: ""
+    - name: submodules
+      type: string
+      default: "true"
+    - name: depth
+      type: string
+      default: "1"
+    - name: sslVerify
+      type: string
+      default: "true"
+  steps:
+    - name: clone
+      image: alpine/git
+      workingDir: $(workspaces.output.path)
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        git init
+        git remote add origin "$(params.url)"
+        if [ -n "$(params.revision)" ]; then
+          git fetch --depth=$(params.depth) origin "$(params.revision)"
+          git checkout FETCH_HEAD
+        else
+          git fetch --depth=$(params.depth) origin
+          git checkout -B main origin/main || git checkout -B master origin/master || true
+        fi
