@@ -86,7 +86,7 @@ metadata:
   name: tekton-dashboard-backend-view
   labels:
 {{ include "tekton-dashboard.labels" . | indent 4 }}
-  rbac.dashboard.tekton.dev/subject: tekton-dashboard
+    rbac.dashboard.tekton.dev/subject: tekton-dashboard
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
