@@ -13,7 +13,10 @@ spec:
   source:
     repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
     targetRevision: main
-    path: gitops/tekton-dashboard
+    path: helm/charts/tekton-dashboard
+    helm:
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton-pipelines
@@ -33,4 +36,3 @@ spec:
         factor: 2
         maxDuration: 3m
   revisionHistoryLimit: 10
-

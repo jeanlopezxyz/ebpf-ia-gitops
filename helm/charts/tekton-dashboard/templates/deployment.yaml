@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tekton-dashboard.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "tekton-dashboard.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "tekton-dashboard.selectorLabels" . | indent 6 }}
+  template:
+    metadata:
+      name: {{ include "tekton-dashboard.name" . }}
+      labels:
+{{ include "tekton-dashboard.labels" . | indent 8 }}
+    spec:
+      serviceAccountName: {{ include "tekton-dashboard.serviceAccountName" . }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      containers:
+        - name: {{ include "tekton-dashboard.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          args:
+            - --default-namespace={{ .Values.dashboard.defaultNamespace }}
+            - --external-logs={{ .Values.dashboard.externalLogs }}
+            - --log-format={{ .Values.dashboard.logFormat }}
+            - --log-level={{ .Values.dashboard.logLevel }}
+            - --logout-url={{ .Values.dashboard.logoutUrl }}
+            - --namespaces={{ .Values.dashboard.namespaces }}
+            - --pipelines-namespace={{ default .Release.Namespace .Values.dashboard.pipelinesNamespace }}
+            - --port={{ .Values.service.port }}
+            - --read-only={{ .Values.dashboard.readOnly }}
+            - --stream-logs={{ .Values.dashboard.streamLogs }}
+            - --triggers-namespace={{ default .Release.Namespace .Values.dashboard.triggersNamespace }}
+          env:
+            - name: INSTALLED_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: {{ .Values.service.port }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+

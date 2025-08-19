@@ -1,0 +1,20 @@
+apiVersion: v2
+name: tekton-dashboard
+description: A Helm chart for deploying Tekton Dashboard - Web-based UI for Tekton Pipelines
+type: application
+version: 0.1.0
+appVersion: "v0.60.0"
+home: https://github.com/tektoncd/dashboard
+sources:
+  - https://github.com/tektoncd/dashboard
+maintainers:
+  - name: eBPF-AI Platform Team
+    email: support@example.com
+keywords:
+  - tekton
+  - dashboard
+  - ci-cd
+  - pipelines
+  - kubernetes
+icon: https://raw.githubusercontent.com/tektoncd/dashboard/main/logo/logo_48x48.png
+

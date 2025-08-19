@@ -1,0 +1,47 @@
+# Global settings
+replicaCount: 1
+
+image:
+  repository: ghcr.io/tektoncd/dashboard/dashboard
+  tag: v0.60.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9097
+
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: tekton-dashboard.local
+      path: /
+  annotations: {}
+  tls: []
+
+resources: {}
+
+nodeSelector:
+  kubernetes.io/os: linux
+
+tolerations: []
+
+affinity: {}
+
+serviceAccount:
+  create: true
+  name: ""
+
+dashboard:
+  # Flags for the dashboard container
+  defaultNamespace: ""
+  externalLogs: ""
+  logFormat: json
+  logLevel: info
+  logoutUrl: ""
+  namespaces: ""
+  readOnly: true
+  streamLogs: true
+  pipelinesNamespace: ""  # defaults to .Release.Namespace when empty
+  triggersNamespace: ""   # defaults to .Release.Namespace when empty
+
