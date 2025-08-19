@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: simple-ci
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: simple-ci
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  description: Simple CI pipeline - always uses latest tag
+  params:
+    - name: git-url
+      description: Git repository URL
+      default: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      description: Git revision to build
+      default: main
+    - name: image-registry
+      description: Container registry URL
+      default: {{ .Values.imageRegistry | quote }}
+    - name: image-name
+      description: Image name (ml-detector or ebpf-monitor)
+    - name: dockerfile-path
+      description: Path to Dockerfile
+    - name: context-path
+      description: Build context path
+  workspaces:
+    - name: shared-data
+      description: Shared workspace for source code
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-data
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+    
+    - name: build-and-push
+      taskRef:
+        name: buildah
+      runAfter:
+        - fetch-source
+      workspaces:
+        - name: source
+          workspace: shared-data
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/$(params.image-name):latest
+        - name: DOCKERFILE
+          value: $(params.dockerfile-path)
+        - name: CONTEXT
+          value: $(params.context-path)
+        - name: TLSVERIFY
+          value: "false"

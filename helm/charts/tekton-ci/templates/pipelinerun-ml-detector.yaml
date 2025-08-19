@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   pipelineRef:
-    name: ml-detector-ci-v2
+    name: simple-ci
   taskRunTemplate:
     serviceAccountName: pipeline-sa
     podTemplate:
@@ -35,6 +35,8 @@ spec:
       value: {{ .Values.imageRegistry | quote }}
     - name: image-name
       value: ml-detector
-    - name: argo-app-name
-      value: {{ .Values.argoAppName | quote }}
+    - name: dockerfile-path
+      value: ./applications/ml-detector/Dockerfile
+    - name: context-path
+      value: ./applications/ml-detector
 {{- end }}
