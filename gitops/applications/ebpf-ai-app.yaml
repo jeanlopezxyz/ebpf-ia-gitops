@@ -20,8 +20,16 @@ spec:
       parameters:
         - name: global.namespace
           value: ebpf-security
+        - name: global.registry
+          value: "10.100.86.194:5000"
+        - name: global.imageTag
+          value: "sha-unknown-20250819171739"
         - name: mlDetector.replicaCount
           value: "2"
+        - name: mlDetector.image.tag
+          value: "sha-unknown-20250819171739"
+        - name: ebpfMonitor.image.tag
+          value: "sha-unknown-20250819171747"
         - name: autoscaling.enabled
           value: "true"
         - name: redis.enabled
