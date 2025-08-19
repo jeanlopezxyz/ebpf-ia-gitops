@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: ebpf-monitor-ci
-  namespace: { { .Release.Namespace } }
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: ebpf-monitor-ci
     app.kubernetes.io/part-of: ebpf-ai-system
@@ -17,13 +17,13 @@ spec:
       default: main
     - name: image-registry
       description: Container registry URL
-      default: { { .Values.imageRegistry | quote } }
+      default: {{ .Values.imageRegistry | quote }}
     - name: image-name
       description: Image name
       default: ebpf-monitor
     - name: argo-app-name
       description: Argo CD application name
-      default: { { .Values.argoAppName | quote } }
+      default: {{ .Values.argoAppName | quote }}
   workspaces:
     - name: shared-data
       description: Shared workspace for source code
