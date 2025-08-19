@@ -52,9 +52,14 @@ spec:
     - name: build-and-push
       image: $(params.BUILDER_IMAGE)
       workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
       script: |
-        export HOME=/tmp/buildah
-        mkdir -p ${HOME}/.config/containers
+        # Run as root to avoid userid issues
+        export HOME=/root
+        export USER=root
+        mkdir -p /root/.config/containers
         [ "$(workspaces.sslcertdir.bound)" = "true" ] && CERT_DIR_FLAG="--cert-dir=$(workspaces.sslcertdir.path)"
         [ "$(workspaces.dockerconfig.bound)" = "true" ] && DOCKER_CONFIG="$(workspaces.dockerconfig.path)" && export DOCKER_CONFIG
         buildah ${CERT_DIR_FLAG} "--storage-driver=$(params.STORAGE_DRIVER)" bud $(params.BUILD_EXTRA_ARGS) \
