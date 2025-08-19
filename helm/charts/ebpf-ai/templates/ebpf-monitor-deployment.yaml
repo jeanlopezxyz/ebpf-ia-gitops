@@ -47,8 +47,6 @@ spec:
           containerPort: {{ .Values.ebpfMonitor.service.targetPort }}
           protocol: TCP
         env:
-        - name: ML_DETECTOR_URL
-          value: "http://{{ .Values.mlDetector.name }}:{{ .Values.mlDetector.service.port }}"
         {{- range .Values.ebpfMonitor.env }}
         - name: {{ .name }}
           value: {{ .value | quote }}
