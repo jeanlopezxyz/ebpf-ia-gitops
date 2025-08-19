@@ -16,57 +16,36 @@ spec:
     targetRevision: 58.3.2
     helm:
       values: |
+        # Simplified configuration to avoid CRD issues
         alertmanager:
-          enabled: true
-          alertmanagerSpec:
-            storage: {}
+          enabled: false  # Disabled to simplify deployment
         prometheus:
           prometheusSpec:
             storageSpec: {}
-          server:
-            service:
-              type: NodePort
-            ingress:
-              enabled: true
-              ingressClassName: nginx
-              hosts:
-                - prometheus.local
         grafana:
           enabled: true
           adminPassword: admin123
           service:
             type: NodePort
-          ingress:
-            enabled: true
-            ingressClassName: nginx
-            hosts:
-              - grafana.local
+          persistence:
+            enabled: false
           sidecar:
             dashboards:
               enabled: true
               label: grafana_dashboard
-              searchNamespace: true
-        # Extra scrape jobs for app namespaces
-        additionalPrometheusRulesMap: {}
         prometheusOperator:
           admissionWebhooks:
-            enabled: false  # Disabled to avoid stuck hooks in Minikube
-        # Extra scrape configs (for ml-detector and ebpf-monitor)
+            enabled: false
+          prometheusInstanceNamespaces: []
+          alertmanagerInstanceNamespaces: []
+          thanosRulerInstanceNamespaces: []
         prometheus-node-exporter:
           enabled: true
-        prometheus:
-          server:
-            extraScrapeConfigs: |
-              - job_name: 'ml-detector'
-                static_configs:
-                  - targets: ['ml-detector.ebpf-security.svc.cluster.local:5000']
-                metrics_path: '/metrics'
-                scrape_interval: 30s
-              - job_name: 'ebpf-monitor'
-                static_configs:
-                  - targets: ['ebpf-monitor.ebpf-security.svc.cluster.local:8800']
-                metrics_path: '/metrics'
-                scrape_interval: 15s
+        # Disable problematic CRDs
+        prometheusSpec:
+          storageSpec: {}
+        crds:
+          enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
