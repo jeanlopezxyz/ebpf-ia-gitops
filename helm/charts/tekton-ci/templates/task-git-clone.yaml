@@ -67,8 +67,8 @@ spec:
           git checkout "$(params.revision)"
         fi
         
-        # Copy contents to workspace (excluding .git to avoid permission issues)
-        cp -r ./* "$OUTPUT_DIR/" 2>/dev/null || true
-        cp -r .[^.]* "$OUTPUT_DIR/" 2>/dev/null || true
+        # Copy all contents to workspace
+        cp -r . "$OUTPUT_DIR/"
         
         echo "Successfully cloned repository to workspace"
+        ls -la "$OUTPUT_DIR/"
