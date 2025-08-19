@@ -34,7 +34,6 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /app/ebpf-monitor .
-COPY --from=builder /app/config/ ./config/
 
 # Change ownership
 RUN chown -R monitor:monitor /app
