@@ -1,5 +1,5 @@
 # eBPF Monitor Application Dockerfile
-FROM golang:1.21-alpine AS builder
+FROM docker.io/library/golang:1.21-alpine AS builder
 
 LABEL maintainer="eBPF AI Team"
 LABEL description="eBPF-based network monitoring and metrics collection"
@@ -21,7 +21,7 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o ebpf-monitor ./cmd/monitor
 
 # Final stage
-FROM alpine:latest
+FROM docker.io/library/alpine:latest
 
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates curl

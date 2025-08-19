@@ -1,5 +1,5 @@
 # ML Detector Application Dockerfile
-FROM python:3.11-slim
+FROM docker.io/library/python:3.11-slim
 
 LABEL maintainer="eBPF AI Team"
 LABEL description="ML-based threat detection for eBPF security"
