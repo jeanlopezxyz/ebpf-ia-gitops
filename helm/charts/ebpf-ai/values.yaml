@@ -2,7 +2,7 @@
 
 global:
   namespace: ebpf-security
-  registry: "localhost:5000"  # Minikube registry addon default
+  registry: "registry.container-registry:5000"  # Internal registry service
   imageTag: "latest"
   
 # ML Detector Configuration
