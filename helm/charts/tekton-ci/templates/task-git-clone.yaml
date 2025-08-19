@@ -36,16 +36,25 @@ spec:
     - name: clone
       image: alpine/git
       workingDir: $(workspaces.output.path)
+      env:
+        - name: HOME
+          value: /tekton/home
+        - name: GIT_CONFIG_GLOBAL
+          value: /tekton/home/.gitconfig
       script: |
         #!/usr/bin/env sh
         set -eu
-        # Create local git config directory with proper permissions
-        mkdir -p /tmp/.git-config
-        export HOME=/tmp/.git-config
-        # Configure git locally (not globally)
-        git config --add safe.directory $(workspaces.output.path)
-        git config user.name "tekton-pipeline"
-        git config user.email "tekton@pipeline.local"
+        # Create home directory with proper permissions
+        mkdir -p /tekton/home
+        chmod 755 /tekton/home
+        # Configure git without global config files
+        export GIT_CONFIG_COUNT=3
+        export GIT_CONFIG_KEY_0=user.name
+        export GIT_CONFIG_VALUE_0="tekton-pipeline"
+        export GIT_CONFIG_KEY_1=user.email
+        export GIT_CONFIG_VALUE_1="tekton@pipeline.local"
+        export GIT_CONFIG_KEY_2=safe.directory
+        export GIT_CONFIG_VALUE_2="*"
         git init
         git remote add origin "$(params.url)"
         if [ -n "$(params.revision)" ]; then
