@@ -4,10 +4,10 @@ FROM docker.io/library/python:3.11-slim
 LABEL maintainer="eBPF AI Team"
 LABEL description="ML-based threat detection for eBPF security"
 
-# Install system dependencies
+# Install system dependencies for ML libraries
 RUN apt-get update && apt-get install -y \
-    gcc \
     curl \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -20,9 +20,21 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Create directory for ML models
+RUN mkdir -p /tmp/models
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    FLASK_ENV=production
+
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash detector && \
-    chown -R detector:detector /app
+    chown -R detector:detector /app && \
+    chown -R detector:detector /tmp/models
+
+# Set environment variable for model path
+ENV MODEL_PATH=/tmp/models
+
 USER detector
 
 # Expose application port
@@ -32,5 +44,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Run application
-CMD ["python", "app.py"]
+# Run application with Gunicorn (2 workers, 4 threads)
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app", "--workers", "2", "--threads", "4", "--timeout", "30"]
