@@ -1,21 +1,34 @@
-# Build cache and VCS
-.git/
+# Git files
+.git
 .gitignore
-.gitattributes
 
-# Editor/OS files
-.vscode/
-.idea/
+# Documentation
+*.md
+README*
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
 .DS_Store
+Thumbs.db
 
-# Go build artifacts
-bin/
-build/
-dist/
+# Build artifacts
+*.o
+*.so
+*.a
 
-# Tests and fixtures (not needed in runtime)
-tests/
+# Go test files
+*_test.go
+coverage.*
 
-# eBPF compiled objects (rebuilt in builder stage)
-bpf/*.o
+# Temporary files
+*.tmp
+*.log
 
+# Development files
+.env
+.env.local

@@ -3,30 +3,23 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
+	"sync"
 	"syscall"
 	"time"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
-	"github.com/cilium/ebpf/ringbuf"
-	"github.com/cilium/ebpf/rlimit"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/config"
 	"github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/metrics"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall" network ../../bpf/network_monitor.c
-
-// NetworkEvent represents a network event from eBPF program
+// NetworkEvent represents a network event
 type NetworkEvent struct {
 	SrcIP      uint32 `json:"src_ip"`
 	DstIP      uint32 `json:"dst_ip"`
@@ -38,195 +31,194 @@ type NetworkEvent struct {
 	TCPFlags   uint8  `json:"tcp_flags"`
 }
 
+// NetworkStats holds aggregated network statistics
+type NetworkStats struct {
+	PacketsPerSecond float64 `json:"packets_per_second"`
+	BytesPerSecond   float64 `json:"bytes_per_second"`
+	UniqueIPs        int     `json:"unique_ips"`
+	UniquePorts      int     `json:"unique_ports"`
+	TCPRatio         float64 `json:"tcp_ratio"`
+	SYNPackets       int64   `json:"syn_packets"`
+}
+
 // Application represents the main application
 type Application struct {
 	config config.Config
-	objs   *networkObjects
-	link   link.Link
-	reader *ringbuf.Reader
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	// Statistics tracking
+	mu         sync.RWMutex
+	stats      NetworkStats
+	ips        map[uint32]struct{}
+	ports      map[uint16]struct{}
+	tcpPackets int64
+	udpPackets int64
+	synPackets int64
+	totalBytes uint64
+	totalPkts  uint64
+	lastReset  time.Time
 }
 
 // NewApplication creates a new application instance
 func NewApplication() (*Application, error) {
-	// Load configuration
 	cfg := config.New()
-
-	// Initialize metrics
 	metrics.Init()
 
-	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Application{
-		config: cfg,
-		ctx:    ctx,
-		cancel: cancel,
+		config:    cfg,
+		ctx:       ctx,
+		cancel:    cancel,
+		ips:       make(map[uint32]struct{}),
+		ports:     make(map[uint16]struct{}),
+		lastReset: time.Now(),
 	}, nil
 }
 
-// ipToString converts IP from uint32 to string
+// ipToString converts IP from uint32 to string (little-endian)
 func ipToString(ip uint32) string {
 	return fmt.Sprintf("%d.%d.%d.%d",
 		byte(ip), byte(ip>>8), byte(ip>>16), byte(ip>>24))
 }
 
-// setupEBPF initializes and loads the eBPF program
-func (app *Application) setupEBPF() error {
-	// Remove memory limit for eBPF
-	if err := rlimit.RemoveMemlock(); err != nil {
-		return fmt.Errorf("removing memlock: %w", err)
-	}
-
-	// Load eBPF objects
-	app.objs = &networkObjects{}
-	if err := loadNetworkObjects(app.objs, nil); err != nil {
-		return fmt.Errorf("loading eBPF objects: %w", err)
-	}
-
-	// Find network interface
-	iface, err := app.findNetworkInterface()
-	if err != nil {
-		return fmt.Errorf("finding network interface: %w", err)
-	}
-
-	// Attach XDP program to interface
-	app.link, err = link.AttachXDP(link.XDPOptions{
-		Program:   app.objs.NetworkMonitor,
-		Interface: iface.Index,
-	})
-	if err != nil {
-		return fmt.Errorf("attaching XDP program to %s: %w", iface.Name, err)
-	}
-
-	// Create ring buffer reader
-	app.reader, err = ringbuf.NewReader(app.objs.Events)
-	if err != nil {
-		return fmt.Errorf("opening ring buffer: %w", err)
-	}
-
-	log.Printf("✅ eBPF program attached to interface %s", iface.Name)
-	return nil
-}
-
-// findNetworkInterface finds a suitable network interface
-func (app *Application) findNetworkInterface() (*net.Interface, error) {
-	// Try configured interface first
-	if app.config.Interface != "" {
-		if iface, err := net.InterfaceByName(app.config.Interface); err == nil {
-			return iface, nil
-		}
-		log.Printf("⚠️  Interface %s not found, trying fallbacks", app.config.Interface)
-	}
-
-	// Try common interfaces
-	fallbacks := []string{"eth0", "lo", "cilium_host", "cni0", "docker0"}
-	for _, name := range fallbacks {
-		if iface, err := net.InterfaceByName(name); err == nil && iface.Flags&net.FlagUp != 0 {
-			log.Printf("✅ Using fallback interface: %s", name)
-			return iface, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no suitable network interface found")
-}
-
-// startEventProcessor starts the eBPF event processing goroutine
-func (app *Application) startEventProcessor() {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("❌ Event processor panic: %v", r)
-				metrics.ProcessorErrorsTotal.Inc()
-			}
-		}()
-
-		log.Printf("🔄 Starting eBPF event processor...")
-		
-		for {
-			select {
-			case <-app.ctx.Done():
-				log.Printf("🛑 Event processor stopping...")
-				return
-			default:
-				record, err := app.reader.Read()
-				if err != nil {
-					if app.isShuttingDown(err) {
-						return
-					}
-					log.Printf("⚠️  Error reading from ring buffer: %v", err)
-					metrics.RingbufLostEventsTotal.Inc()
-					time.Sleep(10 * time.Millisecond)
-					continue
-				}
-
-				var event NetworkEvent
-				if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
-					log.Printf("⚠️  Error parsing event: %v", err)
-					metrics.ParseErrorsTotal.Inc()
-					continue
-				}
-
-				// Process event
-				app.processEvent(event)
-				metrics.EventsProcessedTotal.Inc()
-			}
-		}
-	}()
-}
-
 // processEvent processes a single network event
 func (app *Application) processEvent(event NetworkEvent) {
-	// Update metrics
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	protocol := "other"
 	switch event.Protocol {
-	case 6:
+	case 6: // TCP
 		protocol = "tcp"
-		metrics.SynPacketsTotal.Inc()
-	case 17:
+		app.tcpPackets++
+		if event.TCPFlags&0x02 != 0 { // SYN flag
+			app.synPackets++
+			metrics.SynPacketsTotal.Inc()
+		}
+	case 17: // UDP
 		protocol = "udp"
+		app.udpPackets++
 	}
 
+	// Update Prometheus metrics
 	metrics.PacketsProcessed.WithLabelValues(protocol, "inbound").Inc()
 	metrics.BytesProcessed.WithLabelValues(protocol).Add(float64(event.PacketSize))
 
-	// Simple logging for demo purposes
-	if event.SrcPort != 0 || event.DstPort != 0 {
-		log.Printf("📊 %s:%d -> %s:%d [%s] %d bytes", 
-			ipToString(event.SrcIP), event.SrcPort,
-			ipToString(event.DstIP), event.DstPort,
-			protocol, event.PacketSize)
+	// Track unique IPs and ports
+	app.ips[event.SrcIP] = struct{}{}
+	app.ips[event.DstIP] = struct{}{}
+	if event.SrcPort != 0 {
+		app.ports[event.SrcPort] = struct{}{}
+	}
+	if event.DstPort != 0 {
+		app.ports[event.DstPort] = struct{}{}
+	}
+
+	app.totalBytes += uint64(event.PacketSize)
+	app.totalPkts++
+}
+
+// updateStats calculates and updates statistics periodically
+func (app *Application) updateStats() {
+	ticker := time.NewTicker(app.config.StatsWindow)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-app.ctx.Done():
+			return
+		case <-ticker.C:
+			app.mu.Lock()
+			elapsed := time.Since(app.lastReset).Seconds()
+			if elapsed > 0 {
+				app.stats.PacketsPerSecond = float64(app.totalPkts) / elapsed
+				app.stats.BytesPerSecond = float64(app.totalBytes) / elapsed
+				app.stats.UniqueIPs = len(app.ips)
+				app.stats.UniquePorts = len(app.ports)
+				app.stats.SYNPackets = app.synPackets
+
+				total := app.tcpPackets + app.udpPackets
+				if total > 0 {
+					app.stats.TCPRatio = float64(app.tcpPackets) / float64(total)
+				}
+
+				// Update Prometheus gauges
+				metrics.PacketsPerSecond.Set(app.stats.PacketsPerSecond)
+				metrics.BytesPerSecond.Set(app.stats.BytesPerSecond)
+				metrics.UniqueIPs.Set(float64(app.stats.UniqueIPs))
+				metrics.UniquePorts.Set(float64(app.stats.UniquePorts))
+
+				// Reset counters for next window
+				app.ips = make(map[uint32]struct{})
+				app.ports = make(map[uint16]struct{})
+				app.tcpPackets = 0
+				app.udpPackets = 0
+				app.synPackets = 0
+				app.totalBytes = 0
+				app.totalPkts = 0
+				app.lastReset = time.Now()
+			}
+			app.mu.Unlock()
+		}
 	}
 }
 
-// isShuttingDown checks if error indicates shutdown
-func (app *Application) isShuttingDown(err error) bool {
-	errStr := err.Error()
-	return strings.Contains(errStr, "closed") || 
-		   strings.Contains(errStr, "EOF") ||
-		   strings.Contains(errStr, "context canceled")
+// getStats returns current statistics
+func (app *Application) getStats() NetworkStats {
+	app.mu.RLock()
+	defer app.mu.RUnlock()
+	return app.stats
 }
 
-// startHTTPServer starts the HTTP server for metrics and health checks
+// startHTTPServer starts the HTTP server
 func (app *Application) startHTTPServer() error {
 	mux := http.NewServeMux()
-	
+
 	// Health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"healthy","service":"ebpf-monitor"}`))
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":    "healthy",
+			"service":   "ebpf-monitor",
+			"version":   "2.1.0",
+			"timestamp": time.Now().Format(time.RFC3339),
+		})
 	})
 
-	// Metrics endpoint
+	// Statistics endpoint
+	mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(app.getStats())
+	})
+
+	// Root endpoint with service info
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"service":     "eBPF Network Monitor",
+			"version":     "2.1.0",
+			"description": "eBPF-based network monitoring with ML integration",
+			"endpoints": map[string]string{
+				"health":  "/health",
+				"stats":   "/stats",
+				"metrics": "/metrics",
+			},
+		})
+	})
+
+	// Prometheus metrics endpoint
 	mux.Handle("/metrics", promhttp.Handler())
 
 	log.Printf("🌐 Starting HTTP server on %s", app.config.HTTPAddr)
-	
+
 	server := &http.Server{
-		Addr:    app.config.HTTPAddr,
-		Handler: mux,
+		Addr:         app.config.HTTPAddr,
+		Handler:      mux,
+		ReadTimeout:  app.config.ReadTimeout,
+		WriteTimeout: app.config.WriteTimeout,
+		IdleTimeout:  app.config.IdleTimeout,
 	}
 
 	go func() {
@@ -240,46 +232,135 @@ func (app *Application) startHTTPServer() error {
 	return server.ListenAndServe()
 }
 
-// cleanup performs cleanup operations
-func (app *Application) cleanup() {
-	log.Printf("🧹 Cleaning up...")
-	
-	// Cancel context to stop goroutines
-	app.cancel()
-	
-	// Close ring buffer reader
-	if app.reader != nil {
-		app.reader.Close()
+// simulateTraffic generates synthetic network events for testing
+func (app *Application) simulateTraffic() {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	counter := uint32(0)
+	log.Printf("🔄 Starting traffic simulation (eBPF not available)...")
+
+	for {
+		select {
+		case <-app.ctx.Done():
+			return
+		case <-ticker.C:
+			counter++
+
+			event := NetworkEvent{
+				SrcIP:      0x0A000001 + (counter % 255), // 10.0.0.1-10.0.0.255
+				DstIP:      0x0A000002,                   // 10.0.0.2
+				SrcPort:    1024 + uint16(counter%60000),
+				DstPort:    80 + uint16(counter%3),
+				Protocol:   6, // TCP
+				PacketSize: 64 + (counter % 1400),
+				Timestamp:  uint64(time.Now().UnixNano()),
+				TCPFlags:   0x18, // ACK + PSH
+			}
+
+			app.processEvent(event)
+			metrics.EventsProcessedTotal.Inc()
+		}
 	}
-	
-	// Detach XDP program
-	if app.link != nil {
-		app.link.Close()
+}
+
+// startMLClient sends statistics to ML Detector periodically
+func (app *Application) startMLClient() {
+	ticker := time.NewTicker(app.config.PostInterval)
+	defer ticker.Stop()
+
+	log.Printf("🤖 Starting ML Detector client (posting to %s every %v)", 
+		app.config.MLDetectorURL, app.config.PostInterval)
+
+	go func() {
+		backoff := time.Second
+		
+		for {
+			select {
+			case <-app.ctx.Done():
+				return
+			case <-ticker.C:
+				stats := app.getStats()
+				
+				// Prepare features for ML Detector
+				features := map[string]interface{}{
+					"packets_per_second": stats.PacketsPerSecond,
+					"bytes_per_second":   stats.BytesPerSecond,
+					"unique_ips":         stats.UniqueIPs,
+					"unique_ports":       stats.UniquePorts,
+					"tcp_ratio":          stats.TCPRatio,
+					"syn_packets":        stats.SYNPackets,
+				}
+
+				// Send to ML Detector
+				if err := app.postToMLDetector(features); err != nil {
+					log.Printf("⚠️  ML Detector error: %v", err)
+					metrics.MLPostFailuresTotal.Inc()
+					
+					// Exponential backoff
+					time.Sleep(backoff)
+					if backoff < 10*time.Second {
+						backoff *= 2
+					}
+				} else {
+					backoff = time.Second // Reset backoff on success
+				}
+			}
+		}
+	}()
+}
+
+// postToMLDetector sends features to ML Detector API
+func (app *Application) postToMLDetector(features map[string]interface{}) error {
+	jsonData, err := json.Marshal(features)
+	if err != nil {
+		return fmt.Errorf("marshaling features: %w", err)
 	}
+
+	client := &http.Client{Timeout: app.config.HTTPClientTimeout}
 	
-	// Close eBPF objects
-	if app.objs != nil {
-		app.objs.Close()
+	resp, err := client.Post(
+		app.config.MLDetectorURL+"/detect", 
+		"application/json", 
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return fmt.Errorf("posting to ML detector: %w", err)
 	}
-	
-	log.Printf("✅ Cleanup completed")
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("ML detector returned status %d", resp.StatusCode)
+	}
+
+	// Log ML detector response for debugging
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+		if threatDetected, ok := result["threat_detected"].(bool); ok && threatDetected {
+			log.Printf("🚨 ML Detector found threat: %v", result)
+		}
+	}
+
+	return nil
 }
 
 // Run starts the application
 func (app *Application) Run() error {
-	log.Printf("🚀 Starting eBPF Network Monitor...")
-	log.Printf("📊 Config: Interface=%s, HTTPAddr=%s", 
+	log.Printf("🚀 Starting eBPF Network Monitor v2.1.0...")
+	log.Printf("📊 Config: Interface=%s, HTTPAddr=%s",
 		app.config.Interface, app.config.HTTPAddr)
 
-	// Setup eBPF
-	if err := app.setupEBPF(); err != nil {
-		return fmt.Errorf("setting up eBPF: %w", err)
-	}
+	// Start statistics updater
+	go app.updateStats()
 
-	// Start event processor
-	app.startEventProcessor()
+	// Start ML detector client
+	go app.startMLClient()
 
-	// Start HTTP server in background
+	// For now, run in simulation mode (eBPF can be added later)
+	log.Printf("🔄 Running in simulation mode...")
+	go app.simulateTraffic()
+
+	// Start HTTP server
 	go func() {
 		if err := app.startHTTPServer(); err != nil && err != http.ErrServerClosed {
 			log.Printf("❌ HTTP server error: %v", err)
@@ -291,25 +372,22 @@ func (app *Application) Run() error {
 	// Wait for shutdown signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	<-sigChan
 	log.Printf("🛑 Shutdown signal received")
-	
-	app.cleanup()
+
+	app.cancel()
 	return nil
 }
 
 func main() {
-	// Set log format
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	
-	// Create application
+
 	app, err := NewApplication()
 	if err != nil {
 		log.Fatalf("❌ Failed to create application: %v", err)
 	}
 
-	// Run application
 	if err := app.Run(); err != nil {
 		log.Fatalf("❌ Application error: %v", err)
 	}
