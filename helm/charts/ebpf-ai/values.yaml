@@ -28,14 +28,14 @@ mlDetector:
       memory: 1Gi
       
   env:
-    - name: REDIS_HOST
-      value: "ebpf-ai-redis-master"
-    - name: REDIS_PORT
-      value: "6379"
-    - name: MODEL_CACHE_TTL
-      value: "3600"
-    - name: ENABLE_ML_CACHE
+    - name: MODEL_PATH
+      value: "/app/models"
+    - name: TRAINING_ENABLED
       value: "true"
+    - name: BASELINE_ENABLED
+      value: "true"
+    - name: PROMETHEUS_MULTIPROC_DIR
+      value: "/tmp/prometheus"
       
   livenessProbe:
     httpGet:
@@ -77,17 +77,29 @@ ebpfMonitor:
   env:
     - name: ML_DETECTOR_URL
       value: "http://ml-detector:5000"
-    - name: METRICS_PORT
-      value: "8800"
-    - name: COLLECTION_INTERVAL
-      value: "10"
+    - name: INTERFACE
+      value: "eth0"
+    - name: STATS_WINDOW
+      value: "1s"
+    - name: POST_INTERVAL
+      value: "2s"
+    - name: HTTP_CLIENT_TIMEOUT
+      value: "2s"
+    - name: LOG_LEVEL
+      value: "info"
       
   livenessProbe:
     httpGet:
-      path: /metrics
+      path: /health
       port: 8800
     initialDelaySeconds: 10
     periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 8800
+    initialDelaySeconds: 5
+    periodSeconds: 5
 
 # Attack Simulator Configuration
 attackSimulator:

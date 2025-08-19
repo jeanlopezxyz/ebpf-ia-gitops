@@ -2,8 +2,8 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/tektoncd/dashboard/dashboard
-  tag: v0.60.0
+  repository: docker.io/tektoncd/dashboard
+  tag: v0.47.0
   pullPolicy: IfNotPresent
 
 service:
