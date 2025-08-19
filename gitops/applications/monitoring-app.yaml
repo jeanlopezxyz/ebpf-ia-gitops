@@ -45,6 +45,18 @@ spec:
         prometheus:
           prometheusSpec:
             storageSpec: {}
+            # Scrape configs for eBPF applications
+            additionalScrapeConfigs:
+              - job_name: 'ml-detector'
+                static_configs:
+                  - targets: ['ml-detector.ebpf-security.svc.cluster.local:5000']
+                metrics_path: '/metrics'
+                scrape_interval: 30s
+              - job_name: 'ebpf-monitor'
+                static_configs:
+                  - targets: ['ebpf-monitor.ebpf-security.svc.cluster.local:8800']
+                metrics_path: '/metrics'
+                scrape_interval: 15s
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
