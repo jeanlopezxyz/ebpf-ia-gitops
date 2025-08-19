@@ -11,52 +11,30 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://prometheus-community.github.io/helm-charts
-    chart: kube-prometheus-stack
-    targetRevision: 45.0.0
+    repoURL: https://grafana.github.io/helm-charts
+    chart: grafana
+    targetRevision: 7.0.0
     helm:
       values: |
-        # Simplified configuration to avoid CRD issues
-        alertmanager:
-          enabled: false  # Disabled to simplify deployment
-        prometheus:
-          prometheusSpec:
-            storageSpec: {}
-        grafana:
+        # Simple Grafana-only deployment
+        adminPassword: admin123
+        service:
+          type: NodePort
+        persistence:
+          enabled: false
+        sidecar:
+          dashboards:
+            enabled: true
+            label: grafana_dashboard
+            searchNamespace: true
+        grafana.ini:
+          server:
+            root_url: http://localhost:3000
+        ingress:
           enabled: true
-          adminPassword: admin123
-          service:
-            type: NodePort
-          persistence:
-            enabled: false
-          sidecar:
-            dashboards:
-              enabled: true
-              label: grafana_dashboard
-        prometheusOperator:
-          admissionWebhooks:
-            enabled: false
-          prometheusInstanceNamespaces: []
-          alertmanagerInstanceNamespaces: []
-          thanosRulerInstanceNamespaces: []
-        prometheus-node-exporter:
-          enabled: true
-        # CRDs pre-installed manually
-        prometheus:
-          prometheusSpec:
-            storageSpec: {}
-            # Scrape configs for eBPF applications
-            additionalScrapeConfigs:
-              - job_name: 'ml-detector'
-                static_configs:
-                  - targets: ['ml-detector.ebpf-security.svc.cluster.local:5000']
-                metrics_path: '/metrics'
-                scrape_interval: 30s
-              - job_name: 'ebpf-monitor'
-                static_configs:
-                  - targets: ['ebpf-monitor.ebpf-security.svc.cluster.local:8800']
-                metrics_path: '/metrics'
-                scrape_interval: 15s
+          ingressClassName: nginx
+          hosts:
+            - grafana.local
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
