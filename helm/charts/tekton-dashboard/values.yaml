@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: gcr.io/tekton-releases/github.com/tektoncd/dashboard/cmd/dashboard
-  tag: v0.45.0
+  tag: v0.46.0
   pullPolicy: IfNotPresent
 
 service:
