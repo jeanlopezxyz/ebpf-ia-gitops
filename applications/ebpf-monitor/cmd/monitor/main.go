@@ -131,9 +131,12 @@ func runEBPF(ifName string, input chan<- proc.NetworkEvent) error {
             continue
         }
         
-        log.Printf("Captured packet: %s:%d -> %s:%d", 
-            ipToString(event.SrcIP), event.SrcPort,
-            ipToString(event.DstIP), event.DstPort)
+        // Only log occasionally to avoid spam (every 100th packet)
+        if event.SrcPort%100 == 0 {
+            log.Printf("Captured packet: %s:%d -> %s:%d", 
+                ipToString(event.SrcIP), event.SrcPort,
+                ipToString(event.DstIP), event.DstPort)
+        }
         
         // Send to processing
         input <- toProcEvent(event)
