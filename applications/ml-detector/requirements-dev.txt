@@ -1,0 +1,6 @@
+# Dev-only dependencies for exploration and plotting (not used in production image)
+jupyter==1.0.0
+notebook==7.2.1
+matplotlib==3.8.4
+seaborn==0.13.2
+papermill==2.5.0
