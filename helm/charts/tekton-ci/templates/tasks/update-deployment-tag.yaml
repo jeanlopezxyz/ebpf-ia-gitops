@@ -38,9 +38,9 @@ spec:
         APP_NAME=$(params.app-name)
         NEW_TAG=$(params.new-tag)
         
-        # Configure git
-        git config --global user.email "tekton@ebpf-ai.local"
-        git config --global user.name "Tekton Pipeline"
+        # Configure git (local only)
+        git config user.email "tekton@ebpf-ai.local"
+        git config user.name "Tekton Pipeline"
         
         # Update the ArgoCD application yaml
         ARGO_FILE="gitops/applications/ebpf-ai-app.yaml"

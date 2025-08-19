@@ -27,9 +27,9 @@ spec:
         # Get the latest tag for this application
         APP_NAME=$(params.app-name)
         
-        # Initialize git config for tagging
-        git config --global user.email "tekton@ebpf-ai.local"
-        git config --global user.name "Tekton Pipeline"
+        # Initialize git config for tagging (local only)
+        git config user.email "tekton@ebpf-ai.local"
+        git config user.name "Tekton Pipeline"
         
         # Fetch all tags
         git fetch --tags || true
