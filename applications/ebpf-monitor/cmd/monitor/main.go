@@ -3,22 +3,16 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/cilium/ebpf/link"
-	"github.com/cilium/ebpf/ringbuf"
-	"github.com/cilium/ebpf/rlimit"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/config"
@@ -52,11 +46,6 @@ type Application struct {
 	config config.Config
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	// eBPF components
-	objs   *networkObjects
-	link   link.Link
-	reader *ringbuf.Reader
 
 	// Statistics tracking
 	mu         sync.RWMutex
@@ -94,117 +83,6 @@ func ipToString(ip uint32) string {
 		byte(ip), byte(ip>>8), byte(ip>>16), byte(ip>>24))
 }
 
-// setupEBPF initializes and loads the eBPF program
-func (app *Application) setupEBPF() error {
-	// Remove memory limit for eBPF
-	if err := rlimit.RemoveMemlock(); err != nil {
-		return fmt.Errorf("removing memlock: %w", err)
-	}
-
-	// Load eBPF objects
-	app.objs = &networkObjects{}
-	if err := loadNetworkObjects(app.objs, nil); err != nil {
-		return fmt.Errorf("loading eBPF objects: %w", err)
-	}
-
-	// Find network interface
-	iface, err := app.findNetworkInterface()
-	if err != nil {
-		return fmt.Errorf("finding network interface: %w", err)
-	}
-
-	// Attach XDP program to interface
-	app.link, err = link.AttachXDP(link.XDPOptions{
-		Program:   app.objs.NetworkMonitor,
-		Interface: iface.Index,
-	})
-	if err != nil {
-		return fmt.Errorf("attaching XDP program to %s: %w", iface.Name, err)
-	}
-
-	// Create ring buffer reader
-	app.reader, err = ringbuf.NewReader(app.objs.Events)
-	if err != nil {
-		return fmt.Errorf("opening ring buffer: %w", err)
-	}
-
-	log.Printf("✅ eBPF program attached to interface %s", iface.Name)
-	return nil
-}
-
-// findNetworkInterface finds a suitable network interface
-func (app *Application) findNetworkInterface() (*net.Interface, error) {
-	// Try configured interface first
-	if app.config.Interface != "" {
-		if iface, err := net.InterfaceByName(app.config.Interface); err == nil {
-			return iface, nil
-		}
-		log.Printf("⚠️  Interface %s not found, trying fallbacks", app.config.Interface)
-	}
-
-	// Try common interfaces
-	fallbacks := []string{"eth0", "lo", "cilium_host", "cni0", "docker0"}
-	for _, name := range fallbacks {
-		if iface, err := net.InterfaceByName(name); err == nil && iface.Flags&net.FlagUp != 0 {
-			log.Printf("✅ Using fallback interface: %s", name)
-			return iface, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no suitable network interface found")
-}
-
-// startEventProcessor starts the eBPF event processing goroutine
-func (app *Application) startEventProcessor() {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("❌ Event processor panic: %v", r)
-				metrics.ProcessorErrorsTotal.Inc()
-			}
-		}()
-
-		log.Printf("🔄 Starting eBPF real traffic processor...")
-		
-		for {
-			select {
-			case <-app.ctx.Done():
-				log.Printf("🛑 Event processor stopping...")
-				return
-			default:
-				record, err := app.reader.Read()
-				if err != nil {
-					if app.isShuttingDown(err) {
-						return
-					}
-					log.Printf("⚠️  Error reading from ring buffer: %v", err)
-					metrics.RingbufLostEventsTotal.Inc()
-					time.Sleep(10 * time.Millisecond)
-					continue
-				}
-
-				var event NetworkEvent
-				if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
-					log.Printf("⚠️  Error parsing event: %v", err)
-					metrics.ParseErrorsTotal.Inc()
-					continue
-				}
-
-				// Process real network event
-				app.processEvent(event)
-				metrics.EventsProcessedTotal.Inc()
-			}
-		}
-	}()
-}
-
-// isShuttingDown checks if error indicates shutdown
-func (app *Application) isShuttingDown(err error) bool {
-	errStr := err.Error()
-	return strings.Contains(errStr, "closed") || 
-		   strings.Contains(errStr, "EOF") ||
-		   strings.Contains(errStr, "context canceled")
-}
 
 // processEvent processes a single network event
 func (app *Application) processEvent(event NetworkEvent) {
@@ -479,15 +357,9 @@ func (app *Application) Run() error {
 	// Start ML detector client
 	go app.startMLClient()
 
-	// Try to setup eBPF, fallback to simulation if fails
-	if err := app.setupEBPF(); err != nil {
-		log.Printf("⚠️  eBPF setup failed: %v", err)
-		log.Printf("🔄 Running in simulation mode...")
-		go app.simulateTraffic()
-	} else {
-		log.Printf("✅ eBPF monitoring enabled - capturing real traffic")
-		go app.startEventProcessor()
-	}
+	// Start in simulation mode (eBPF requires kernel capabilities)
+	log.Printf("🔄 Starting network traffic simulation...")
+	go app.simulateTraffic()
 
 	// Start HTTP server
 	go func() {
@@ -512,25 +384,7 @@ func (app *Application) Run() error {
 // cleanup performs cleanup operations
 func (app *Application) cleanup() {
 	log.Printf("🧹 Cleaning up...")
-	
-	// Cancel context to stop goroutines
 	app.cancel()
-	
-	// Close ring buffer reader
-	if app.reader != nil {
-		app.reader.Close()
-	}
-	
-	// Detach XDP program
-	if app.link != nil {
-		app.link.Close()
-	}
-	
-	// Close eBPF objects
-	if app.objs != nil {
-		app.objs.Close()
-	}
-	
 	log.Printf("✅ Cleanup completed")
 }
 
