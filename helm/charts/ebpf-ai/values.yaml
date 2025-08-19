@@ -2,7 +2,7 @@
 
 global:
   namespace: ebpf-security
-  registry: "registry.container-registry:5000"  # Internal registry service
+  registry: "192.168.67.2:5000"  # Registry direct port in lab mode
   imageTag: "latest"
   
 # ML Detector Configuration
