@@ -23,3 +23,8 @@ Endpoints
 - `/train` (POST): on-demand training.
 - `/stats`: model stats.
 
+Prometheus (pull)
+- `PROMETHEUS_URL`: URL del API de Prometheus (ej. `http://prometheus-kube-prometheus-stack-prometheus.monitoring:9090`).
+- Métricas configurables: `PROM_METRIC_PACKETS`, `PROM_METRIC_BYTES`, `PROM_METRIC_SYN` (opcional), `PROM_METRIC_UNIQUE_IPS` (opcional), `PROM_METRIC_UNIQUE_PORTS` (opcional), `PROM_QUERY_WINDOW`.
+- Endpoint: `GET /detect/prom` obtiene un snapshot y ejecuta inferencia. También admite `POST /detect/prom` con overrides:
+  {"window": "2m", "metrics": {"packets": "ebpf_packets_processed_total", "bytes": "ebpf_bytes_processed_total"}}

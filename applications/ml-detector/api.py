@@ -11,6 +11,7 @@ from metrics import (
     THREATS_DETECTED,
 )
 from schemas import DetectRequest
+from prom_source import PrometheusSource
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,40 @@ def create_api(detector: ThreatDetector) -> Blueprint:
             }
         )
 
+    @api.route("/detect/prom", methods=["POST", "GET"])
+    def detect_from_prometheus() -> Response:
+        """Build a feature snapshot from Prometheus and run detection.
+
+        Optional JSON body can override query window and metric names:
+        {
+          "window": "1m", "metrics": {"packets": "...", "bytes": "..."}
+        }
+        """
+        try:
+            payload = request.get_json(silent=True) or {}
+            src = PrometheusSource()
+            # allow runtime override of window/metrics
+            if isinstance(payload, dict):
+                if "window" in payload and isinstance(payload["window"], str):
+                    src.window = payload["window"]
+                metrics = payload.get("metrics") or {}
+                if isinstance(metrics, dict):
+                    src.m_packets = metrics.get("packets", src.m_packets)
+                    src.m_bytes = metrics.get("bytes", src.m_bytes)
+                    src.m_syn = metrics.get("syn", src.m_syn)
+                    src.m_unique_ips = metrics.get("unique_ips", src.m_unique_ips)
+                    src.m_unique_ports = metrics.get("unique_ports", src.m_unique_ports)
+            features = src.snapshot()
+            with PROCESSING_TIME.time():
+                REQUESTS_TOTAL.inc()
+                result = detector.detect(features)
+                for t in result.get("threat_types", []):
+                    THREATS_DETECTED.labels(threat_type=t).inc()
+                return jsonify({"features": features, "result": result})
+        except Exception as e:
+            logger.error(f"Prometheus detection error: {e}")
+            return jsonify({"error": str(e)}), 500
+
     @api.route("/")
     def root() -> Response:
         return jsonify(
@@ -85,6 +120,7 @@ def create_api(detector: ThreatDetector) -> Blueprint:
                     "health": "/health",
                     "metrics": "/metrics",
                     "detect": "/detect (POST)",
+                    "detect_from_prom": "/detect/prom (GET|POST)",
                     "train": "/train (POST)",
                     "stats": "/stats",
                 },
