@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: {{ include "registry.fullname" . }}-ca-installer
-  namespace: kube-system
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "registry.labels" . | nindent 4 }}
     app.kubernetes.io/component: ca-installer
