@@ -47,7 +47,7 @@ probes:
 
 # TLS Configuration
 tls:
-  enabled: true
+  enabled: false
   # CA Certificate for client trust (PEM format)
   caCert: |
     -----BEGIN CERTIFICATE-----

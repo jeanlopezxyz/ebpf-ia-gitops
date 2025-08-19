@@ -22,32 +22,36 @@ spec:
         - name: {{ include "registry.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.tls.enabled }}
           env:
             - name: REGISTRY_HTTP_TLS_CERTIFICATE
               value: /certs/tls.crt
             - name: REGISTRY_HTTP_TLS_KEY
               value: /certs/tls.key
+          {{- end }}
           ports:
             - containerPort: 5000
               name: https
           volumeMounts:
             - name: data
               mountPath: /var/lib/registry
+            {{- if .Values.tls.enabled }}
             - name: certs
               mountPath: /certs
               readOnly: true
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /
               port: 5000
-              scheme: HTTPS
+              scheme: {{ if .Values.tls.enabled }}HTTPS{{ else }}HTTP{{ end }}
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           livenessProbe:
             httpGet:
               path: /
               port: 5000
-              scheme: HTTPS
+              scheme: {{ if .Values.tls.enabled }}HTTPS{{ else }}HTTP{{ end }}
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
           resources:
@@ -56,9 +60,11 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ if and .Values.persistence.enabled .Values.persistence.existingClaim }}{{ .Values.persistence.existingClaim }}{{ else }}{{ include "registry.fullname" . }}-storage{{ end }}
+        {{- if .Values.tls.enabled }}
         - name: certs
           secret:
             secretName: registry-tls
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
