@@ -68,6 +68,7 @@ port-forward: ## Setup port forwarding for local access
 	@echo "Prometheus will be available at: http://localhost:9090"
 	@echo "ML Detector API will be available at: http://localhost:5000"
 	@echo "eBPF Monitor metrics will be available at: http://localhost:8800"
+	@echo "Tekton Dashboard will be available at: http://localhost:9097"
 	@echo ""
 	@echo "Starting port forwards (press Ctrl+C to stop)..."
 	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
@@ -75,6 +76,7 @@ port-forward: ## Setup port forwarding for local access
 	@kubectl port-forward svc/kube-prometheus-stack-prometheus -n monitoring 9090:9090 &
 	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
 	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
+	@kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9097:9097 &
 	@wait
 
 dashboard: ## Open Minikube dashboard
