@@ -1,0 +1,45 @@
+# Tekton Dashboard Installation
+# Apply via: kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tekton-dashboard-installer
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-dashboard-installer
+    app.kubernetes.io/part-of: tekton-system
+spec:
+  template:
+    spec:
+      serviceAccountName: tekton-dashboard-installer
+      restartPolicy: OnFailure
+      containers:
+      - name: installer
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Installing Tekton Dashboard..."
+          kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
+          echo "Tekton Dashboard installed successfully"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-dashboard-installer
+  namespace: tekton-pipelines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-dashboard-installer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: tekton-dashboard-installer
+  namespace: tekton-pipelines

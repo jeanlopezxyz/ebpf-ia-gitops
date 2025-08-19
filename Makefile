@@ -66,7 +66,7 @@ port-forward: ## Setup port forwarding for local access
 	@echo "Killing existing port forwards..."
 	@pkill -f "kubectl port-forward" || true
 	@sleep 2
-	@echo "ArgoCD will be available at: http://localhost:8080"
+	@echo "ArgoCD will be available at: http://localhost:8081"
 	@echo "Grafana will be available at: http://localhost:3000"
 	@echo "Prometheus will be available at: http://localhost:9090"
 	@echo "ML Detector API will be available at: http://localhost:5000"
