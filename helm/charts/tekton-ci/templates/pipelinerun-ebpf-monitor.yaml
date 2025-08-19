@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   pipelineRef:
-    name: ebpf-monitor-ci
+    name: ebpf-monitor-ci-v2
   taskRunTemplate:
     serviceAccountName: pipeline-sa
     podTemplate:

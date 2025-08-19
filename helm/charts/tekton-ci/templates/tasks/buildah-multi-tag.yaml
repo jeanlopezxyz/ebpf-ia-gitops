@@ -1,0 +1,70 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: buildah-multi-tag
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: Build and push container image with multiple tags
+  params:
+    - name: IMAGE
+      description: Reference of the image buildah will produce
+    - name: DOCKERFILE
+      default: ./Dockerfile
+      description: Path to the Dockerfile to build
+    - name: CONTEXT
+      default: .
+      description: Path to the directory to use as context
+    - name: VERSION_TAG
+      description: Version tag for the image
+    - name: TLSVERIFY
+      default: "false"
+      description: Verify the TLS on the registry endpoint
+  workspaces:
+    - name: source
+  results:
+    - name: IMAGE_DIGEST
+      description: Digest of the built image
+  steps:
+    - name: build-and-push
+      image: quay.io/buildah/stable:latest
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env bash
+        set -eu
+        
+        # Build the image
+        buildah bud \
+          --format=oci \
+          --tls-verify=$(params.TLSVERIFY) \
+          --no-cache \
+          -f $(params.DOCKERFILE) \
+          -t $(params.IMAGE):$(params.VERSION_TAG) \
+          -t $(params.IMAGE):latest \
+          $(params.CONTEXT)
+        
+        # Push with version tag
+        buildah push \
+          --tls-verify=$(params.TLSVERIFY) \
+          --digestfile /tmp/image-digest \
+          $(params.IMAGE):$(params.VERSION_TAG) \
+          docker://$(params.IMAGE):$(params.VERSION_TAG)
+        
+        # Push with latest tag
+        buildah push \
+          --tls-verify=$(params.TLSVERIFY) \
+          $(params.IMAGE):latest \
+          docker://$(params.IMAGE):latest
+        
+        # Save digest
+        cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
+        
+        echo "Image pushed with tags: $(params.VERSION_TAG) and latest"
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}

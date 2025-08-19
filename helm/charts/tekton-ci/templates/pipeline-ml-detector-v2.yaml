@@ -1,13 +1,13 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: ml-detector-ci
+  name: ml-detector-ci-v2
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: ml-detector-ci
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
-  description: CI pipeline for ML Detector application
+  description: Enhanced CI pipeline for ML Detector with semantic versioning
   params:
     - name: git-url
       description: Git repository URL
@@ -21,12 +21,12 @@ spec:
     - name: image-name
       description: Image name
       default: ml-detector
-    - name: argo-app-name
-      description: Argo CD application name
-      default: {{ .Values.argoAppName | quote }}
   workspaces:
     - name: shared-data
       description: Shared workspace for source code
+    - name: git-credentials
+      description: Git credentials for pushing
+      optional: true
   tasks:
     - name: fetch-source
       taskRef:
@@ -39,47 +39,69 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.git-revision)
-    - name: generate-tag
+    
+    - name: generate-version
       taskRef:
         name: generate-semantic-tag
       runAfter:
         - fetch-source
       params:
         - name: app-name
-          value: ml-detector
+          value: $(params.image-name)
       workspaces:
         - name: source
           workspace: shared-data
-    - name: build-image
+    
+    - name: build-and-push
       taskRef:
-        name: buildah
+        name: buildah-multi-tag
       runAfter:
-        - generate-tag
+        - generate-version
       workspaces:
         - name: source
           workspace: shared-data
       params:
         - name: IMAGE
-          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-tag.results.image-tag)
+          value: $(params.image-registry)/$(params.image-name)
         - name: DOCKERFILE
           value: ./applications/ml-detector/Dockerfile
         - name: CONTEXT
           value: ./applications/ml-detector
+        - name: VERSION_TAG
+          value: $(tasks.generate-version.results.image-tag)
         - name: TLSVERIFY
           value: "false"
-    - name: sync-deploy
+    
+    - name: push-git-tag
       taskRef:
-        name: argocd-sync
+        name: git-tag-push
       runAfter:
-        - build-image
+        - build-and-push
+      params:
+        - name: tag
+          value: $(tasks.generate-version.results.image-tag)
+        - name: git-url
+          value: $(params.git-url)
+      workspaces:
+        - name: source
+          workspace: shared-data
+        - name: git-credentials
+          workspace: git-credentials
+    
+    - name: update-deployment
+      taskRef:
+        name: update-deployment-tag
+      runAfter:
+        - push-git-tag
       params:
         - name: app-name
-          value: $(params.argo-app-name)
-        - name: set-params
-          value: >-
-            -p global.registry=$(params.image-registry)
-            -p mlDetector.image.tag=$(tasks.generate-tag.results.image-tag)
-        - name: force-sync
-          value: "true"
-        - name: wait-health
-          value: "false"
+          value: $(params.image-name)
+        - name: new-tag
+          value: $(tasks.generate-version.results.image-tag)
+        - name: git-url
+          value: $(params.git-url)
+      workspaces:
+        - name: source
+          workspace: shared-data
+        - name: git-credentials
+          workspace: git-credentials

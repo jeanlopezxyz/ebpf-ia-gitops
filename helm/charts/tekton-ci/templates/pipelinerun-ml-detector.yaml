@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   pipelineRef:
-    name: ml-detector-ci
+    name: ml-detector-ci-v2
   taskRunTemplate:
     serviceAccountName: pipeline-sa
     podTemplate:
