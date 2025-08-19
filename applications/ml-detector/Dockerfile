@@ -25,12 +25,14 @@ RUN mkdir -p /tmp/models
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    FLASK_ENV=production
+    FLASK_ENV=production \
+    PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash detector && \
     chown -R detector:detector /app && \
-    chown -R detector:detector /tmp/models
+    chown -R detector:detector /tmp/models && \
+    mkdir -p /tmp/prometheus && chown -R detector:detector /tmp/prometheus
 
 # Set environment variable for model path
 ENV MODEL_PATH=/tmp/models
