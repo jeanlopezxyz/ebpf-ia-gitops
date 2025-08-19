@@ -2,7 +2,7 @@
 
 global:
   namespace: ebpf-security
-  registry: "registry.container-registry.svc.cluster.local:5000"  # Secure registry with TLS
+  registry: "10.100.86.194:5000"  # Registry ClusterIP (stable) with TLS
   imageTag: "latest"
   
 # ML Detector Configuration
