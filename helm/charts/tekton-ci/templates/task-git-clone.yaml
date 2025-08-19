@@ -40,6 +40,9 @@ spec:
           value: /tmp
         - name: GIT_CONFIG_NOSYSTEM
           value: "true"
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
       script: |
         #!/usr/bin/env sh
         set -eu
