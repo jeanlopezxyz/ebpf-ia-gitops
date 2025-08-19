@@ -55,6 +55,7 @@ spec:
       securityContext:
         runAsUser: 0
         runAsGroup: 0
+        privileged: true
       script: |
         # Run as root to avoid userid issues
         export HOME=/root
@@ -74,8 +75,6 @@ spec:
       volumeMounts:
         - name: varlibcontainers
           mountPath: /var/lib/containers
-      securityContext:
-        privileged: true
   volumes:
     - name: varlibcontainers
       emptyDir: {}
