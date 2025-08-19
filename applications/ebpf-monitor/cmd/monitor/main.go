@@ -51,7 +51,7 @@ func toProcEvent(e NetworkEvent) proc.NetworkEvent {
     return proc.NetworkEvent{SrcIP: e.SrcIP, DstIP: e.DstIP, SrcPort: e.SrcPort, DstPort: e.DstPort, Protocol: e.Protocol, PacketSize: e.PacketSize, Timestamp: e.Timestamp, TCPFlags: e.TCPFlags}
 }
 
-func runEBPF(ifName string, input chan<- proc.NetworkEvent) error {
+func runEBPF(ifName string, input chan<- proc.NetworkEvent) (*ebpf.Map, error) {
     // Remove memory limit for eBPF
     if err := rlimit.RemoveMemlock(); err != nil {
         return fmt.Errorf("removing memlock: %w", err)
@@ -61,14 +61,14 @@ func runEBPF(ifName string, input chan<- proc.NetworkEvent) error {
     spec, err := loadNetwork()
     if err != nil {
         // Fallback to simulation mode handled by caller
-        return fmt.Errorf("cannot load eBPF: %w", err)
+        return nil, fmt.Errorf("cannot load eBPF: %w", err)
     }
 
     coll, err := ebpf.NewCollection(spec)
     if err != nil {
-        return fmt.Errorf("creating eBPF collection: %w", err)
+        return nil, fmt.Errorf("creating eBPF collection: %w", err)
     }
-	defer coll.Close()
+    // keep collection open for process lifetime
 
 	// Attach to network interface
 	prog := coll.Programs["network_monitor"]
@@ -94,56 +94,48 @@ func runEBPF(ifName string, input chan<- proc.NetworkEvent) error {
 		Program:   prog,
 		Interface: iface.Index,
 	})
-	if err != nil {
-		return fmt.Errorf("attaching XDP: %w", err)
-	}
-	defer l.Close()
+    if err != nil {
+        return nil, fmt.Errorf("attaching XDP: %w", err)
+    }
+    // keep link open for process lifetime
 
 	// Open ring buffer for events
-	rd, err := ringbuf.NewReader(coll.Maps["events"])
-	if err != nil {
-		return fmt.Errorf("opening ringbuf: %w", err)
-	}
-	defer rd.Close()
+    rd, err := ringbuf.NewReader(coll.Maps["events"])
+    if err != nil {
+        return nil, fmt.Errorf("opening ringbuf: %w", err)
+    }
+    // keep reader open for process lifetime
 
     log.Printf("✅ eBPF program attached to %s", iface.Name)
 
-	// Read events - blocking call to keep eBPF program alive
-    log.Printf("Starting ring buffer reader loop...")
-    for {
-        record, err := rd.Read()
-        if err != nil {
-            if isRingbufClosed(err) {
-                log.Printf("Ring buffer closed, stopping reader")
-                break
+    // Read events asynchronously
+    go func() {
+        log.Printf("Starting ring buffer reader loop...")
+        for {
+            record, err := rd.Read()
+            if err != nil {
+                if isRingbufClosed(err) {
+                    log.Printf("Ring buffer closed, stopping reader")
+                    return
+                }
+                log.Printf("Error reading from ring buffer: %v", err)
+                met.RingbufLostEventsTotal.Inc()
+                time.Sleep(100 * time.Millisecond)
+                continue
             }
-            log.Printf("Error reading from ring buffer: %v", err)
-            met.RingbufLostEventsTotal.Inc()
-            
-            // Add small delay to prevent busy loop on persistent errors
-            time.Sleep(100 * time.Millisecond)
-            continue
-        }
 
-        var event NetworkEvent
-        if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
-            log.Printf("Error parsing event: %v", err)
-            continue
+            var event NetworkEvent
+            if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
+                log.Printf("Error parsing event: %v", err)
+                continue
+            }
+            input <- toProcEvent(event)
         }
-        
-        // Only log occasionally to avoid spam (every 100th packet)
-        if event.SrcPort%100 == 0 {
-            log.Printf("Captured packet: %s:%d -> %s:%d", 
-                ipToString(event.SrcIP), event.SrcPort,
-                ipToString(event.DstIP), event.DstPort)
-        }
-        
-        // Send to processing
-        input <- toProcEvent(event)
-    }
-    
-    log.Printf("Ring buffer reader stopped")
-    return nil
+    }()
+
+    // return pointer to unique port map if present
+    portMap, _ := coll.Maps["port_unique_count"]
+    return portMap, nil
 }
 
 func simulateTraffic(input chan<- proc.NetworkEvent) {
@@ -191,12 +183,31 @@ func main() {
 
     // eBPF or simulation
     input := pr.Input()
-    if err := runEBPF(cfg.Interface, input); err != nil {
+    portMap, err := runEBPF(cfg.Interface, input)
+    if err != nil {
         log.Printf("⚠️  Cannot load eBPF (need root/CAP_BPF or bpf2go generation failed). Running in simulation mode: %v", err)
         go simulateTraffic(input)
         ready = true
     } else {
         ready = true
+    }
+
+    // If BPF unique port map is available, sum values periodically
+    if portMap != nil {
+        go func() {
+            ticker := time.NewTicker(cfg.StatsWindow)
+            defer ticker.Stop()
+            for range ticker.C {
+                var sum uint64
+                it := portMap.Iterate()
+                var k uint32
+                var v uint32
+                for it.Next(&k, &v) {
+                    sum += uint64(v)
+                }
+                met.BPFUniquePorts.Set(float64(sum))
+            }
+        }()
     }
 
     // HTTP server with timeouts + readiness

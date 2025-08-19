@@ -1,0 +1,21 @@
+# Build cache and VCS
+.git/
+.gitignore
+.gitattributes
+
+# Editor/OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Go build artifacts
+bin/
+build/
+dist/
+
+# Tests and fixtures (not needed in runtime)
+tests/
+
+# eBPF compiled objects (rebuilt in builder stage)
+bpf/*.o
+

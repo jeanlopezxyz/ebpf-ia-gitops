@@ -77,6 +77,14 @@ var (
             Help: "Number of ML detector post failures",
         },
     )
+
+    // Gauge that reflects unique ports counted at BPF layer (optional, via map iteration)
+    BPFUniquePorts = prometheus.NewGauge(
+        prometheus.GaugeOpts{
+            Name: "ebpf_unique_ports_bpf",
+            Help: "Sum of per-IP unique destination ports tracked in BPF map",
+        },
+    )
 )
 
 func Register() {
@@ -90,5 +98,5 @@ func Register() {
     prometheus.MustRegister(BytesPerSecond)
     prometheus.MustRegister(RingbufLostEventsTotal)
     prometheus.MustRegister(MLPostFailuresTotal)
+    prometheus.MustRegister(BPFUniquePorts)
 }
-
