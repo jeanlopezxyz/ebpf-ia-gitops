@@ -5,7 +5,7 @@ LABEL maintainer="eBPF AI Team"
 LABEL description="eBPF-based network monitoring and metrics collection"
 
 # Install build dependencies
-RUN apk add --no-cache git gcc musl-dev linux-headers
+RUN apk add --no-cache git gcc musl-dev linux-headers clang llvm elfutils-dev
 
 # Set working directory
 WORKDIR /app

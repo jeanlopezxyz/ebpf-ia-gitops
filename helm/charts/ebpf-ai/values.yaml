@@ -53,6 +53,7 @@ mlDetector:
 
 # eBPF Monitor Configuration  
 ebpfMonitor:
+  enabled: true
   name: ebpf-monitor
   replicaCount: 1
   image:
