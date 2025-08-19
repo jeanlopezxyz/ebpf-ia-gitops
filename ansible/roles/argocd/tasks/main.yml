@@ -21,8 +21,10 @@
       configs:
         params:
           server.insecure: true  # For local development
+        cm:
+          admin.enabled: "true"
         secret:
-          argocdServerAdminPassword: "$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0oi.S.BN9K"  # bcrypt hash of "admin123"
+          argocdServerAdminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"  # bcrypt hash of "{{ argocd.admin_password }}"
       server:
         service:
           type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
@@ -185,6 +187,8 @@
       type: Ready
       status: "True"
     wait_timeout: 300
+    
+# Password configured via Helm values during installation
     
 - name: Apply App-of-Apps pattern
   kubernetes.core.k8s:
