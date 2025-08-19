@@ -35,17 +35,18 @@ spec:
   steps:
     - name: clone
       image: alpine/git
-      workingDir: $(workspaces.output.path)
       env:
         - name: HOME
-          value: $(workspaces.output.path)
+          value: /tmp
         - name: GIT_CONFIG_NOSYSTEM
           value: "true"
       script: |
         #!/usr/bin/env sh
         set -eu
-        # Use workspace as HOME (already writable)
-        export HOME=$(workspaces.output.path)
+        # Clone to temporary directory first, then copy to workspace
+        TEMP_DIR="/tmp/git-clone-temp"
+        OUTPUT_DIR="$(workspaces.output.path)"
+        
         # Configure git via environment variables only
         export GIT_CONFIG_COUNT=3
         export GIT_CONFIG_KEY_0=user.name
@@ -54,12 +55,20 @@ spec:
         export GIT_CONFIG_VALUE_1="tekton@pipeline.local"
         export GIT_CONFIG_KEY_2=safe.directory
         export GIT_CONFIG_VALUE_2="*"
-        git init
-        git remote add origin "$(params.url)"
-        if [ -n "$(params.revision)" ]; then
-          git fetch --depth=$(params.depth) origin "$(params.revision)"
-          git checkout FETCH_HEAD
-        else
-          git fetch --depth=$(params.depth) origin
-          git checkout -B main origin/main || git checkout -B master origin/master || true
+        
+        # Clean up temp and output directories
+        rm -rf "$TEMP_DIR"
+        rm -rf "$OUTPUT_DIR"/*
+        
+        # Clone to temp directory with proper permissions
+        git clone --depth=$(params.depth) "$(params.url)" "$TEMP_DIR"
+        cd "$TEMP_DIR"
+        if [ -n "$(params.revision)" ] && [ "$(params.revision)" != "main" ]; then
+          git checkout "$(params.revision)"
         fi
+        
+        # Copy contents to workspace (excluding .git to avoid permission issues)
+        cp -r ./* "$OUTPUT_DIR/" 2>/dev/null || true
+        cp -r .[^.]* "$OUTPUT_DIR/" 2>/dev/null || true
+        
+        echo "Successfully cloned repository to workspace"
