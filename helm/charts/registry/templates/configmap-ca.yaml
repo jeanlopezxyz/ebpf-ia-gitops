@@ -1,0 +1,13 @@
+{{- if .Values.tls.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: registry-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "registry.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ca-certificate
+data:
+  ca.crt: |
+    {{ .Values.tls.caCert | nindent 4 }}
+{{- end }}
