@@ -24,12 +24,31 @@
         cm:
           admin.enabled: "true"
         secret:
-          argocdServerAdminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"  # bcrypt hash of "{{ argocd.admin_password }}"
+          # bcrypt hash for "admin123"
+          argocdServerAdminPassword: "$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0oi.S.BN9K"
+          # RFC3339 time to force reload of admin password
+          argocdServerAdminPasswordMtime: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       server:
         service:
           type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
         ingress:
           enabled: false
+      repoServer:
+        env:
+          - name: HTTP_PROXY
+            value: "{{ argocd.http_proxy | default('') }}"
+          - name: HTTPS_PROXY
+            value: "{{ argocd.https_proxy | default('') }}"
+          - name: NO_PROXY
+            value: "{{ argocd.no_proxy | default('127.0.0.1,localhost,.svc,.cluster.local,kubernetes.default.svc') }}"
+      controller:
+        env:
+          - name: HTTP_PROXY
+            value: "{{ argocd.http_proxy | default('') }}"
+          - name: HTTPS_PROXY
+            value: "{{ argocd.https_proxy | default('') }}"
+          - name: NO_PROXY
+            value: "{{ argocd.no_proxy | default('127.0.0.1,localhost,.svc,.cluster.local,kubernetes.default.svc') }}"
       dex:
         enabled: false  # Disable for simplicity
       notifications:

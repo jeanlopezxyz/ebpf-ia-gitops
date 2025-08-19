@@ -47,6 +47,10 @@ argocd:
   namespace: "argocd"
   admin_password: "admin123"  # Default local password for admin
   git_repo_url: "https://github.com/jeanlopezxyz/ebpf-ia-gitops.git"
+  # Optional outbound proxy for Argo CD components (if your network requires it)
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: "127.0.0.1,localhost,.svc,.cluster.local,kubernetes.default.svc"
   
 # Application configuration
 applications:

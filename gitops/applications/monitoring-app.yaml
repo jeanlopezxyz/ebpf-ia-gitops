@@ -41,11 +41,10 @@ spec:
           thanosRulerInstanceNamespaces: []
         prometheus-node-exporter:
           enabled: true
-        # Disable problematic CRDs
-        prometheusSpec:
-          storageSpec: {}
-        crds:
-          enabled: false
+        # CRDs pre-installed manually
+        prometheus:
+          prometheusSpec:
+            storageSpec: {}
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
