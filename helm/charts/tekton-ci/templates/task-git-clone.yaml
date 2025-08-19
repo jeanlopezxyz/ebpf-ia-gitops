@@ -38,16 +38,15 @@ spec:
       workingDir: $(workspaces.output.path)
       env:
         - name: HOME
-          value: /tekton/home
-        - name: GIT_CONFIG_GLOBAL
-          value: /tekton/home/.gitconfig
+          value: $(workspaces.output.path)
+        - name: GIT_CONFIG_NOSYSTEM
+          value: "true"
       script: |
         #!/usr/bin/env sh
         set -eu
-        # Create home directory with proper permissions
-        mkdir -p /tekton/home
-        chmod 755 /tekton/home
-        # Configure git without global config files
+        # Use workspace as HOME (already writable)
+        export HOME=$(workspaces.output.path)
+        # Configure git via environment variables only
         export GIT_CONFIG_COUNT=3
         export GIT_CONFIG_KEY_0=user.name
         export GIT_CONFIG_VALUE_0="tekton-pipeline"
