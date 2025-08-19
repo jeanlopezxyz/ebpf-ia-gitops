@@ -18,7 +18,8 @@ RUN go mod download
 COPY . .
 
 # Generate eBPF Go bindings (if bpf2go is available)
-RUN go generate ./... || true
+# Generate eBPF Go bindings (if bpf2go is available). If it fails, runtime will fallback to simulation mode.
+RUN go generate ./... || echo "bpf2go generation failed; will run in simulation mode if eBPF not available"
 
 # Build application with eBPF support (auto-detect architecture)
 RUN CGO_ENABLED=1 go build -a -installsuffix cgo -o ebpf-monitor ./cmd/monitor
@@ -55,3 +56,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run application
 CMD ["./ebpf-monitor"]
+
+# Defaults (can be overridden at runtime)
+ENV HTTP_ADDR=:8800 \
+    INTERFACE=eth0 \
+    STATS_WINDOW=1s \
+    POST_INTERVAL=2s \
+    ML_DETECTOR_URL=http://ml-detector:5000 \
+    HTTP_CLIENT_TIMEOUT=2s \
+    LOG_LEVEL=info

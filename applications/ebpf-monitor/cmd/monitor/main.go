@@ -99,23 +99,26 @@ func runEBPF(ifName string, input chan<- proc.NetworkEvent) error {
     log.Printf("✅ eBPF program attached to %s", iface.Name)
 
 	// Read events
-	go func() {
-		for {
-			record, err := rd.Read()
-			if err != nil {
-				if isRingbufClosed(err) {
-					return
-				}
-				log.Printf("Error reading from ring buffer: %v", err)
-				continue
-			}
+    go func() {
+        for {
+            record, err := rd.Read()
+            if err != nil {
+                if isRingbufClosed(err) {
+                    return
+                }
+                log.Printf("Error reading from ring buffer: %v", err)
+                met.RingbufLostEventsTotal.Inc()
+                continue
+            }
 
-			var event NetworkEvent
-			if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
-				log.Printf("Error parsing event: %v", err)
-				continue
-			}
-
+            var event NetworkEvent
+            if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
+                log.Printf("Error parsing event: %v", err)
+                continue
+            }
+            if record.LostSamples > 0 {
+                met.RingbufLostEventsTotal.Add(float64(record.LostSamples))
+            }
             input <- toProcEvent(event)
         }
     }()
