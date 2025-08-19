@@ -10,13 +10,6 @@ metadata:
 spec:
   pipelineRef:
     name: ebpf-monitor-ci
-  taskRunTemplate:
-    serviceAccountName: pipeline-sa
-    podTemplate:
-      securityContext:
-        runAsUser: 65532
-        runAsGroup: 65532
-        fsGroup: 65532
   workspaces:
     - name: shared-data
       volumeClaimTemplate:
