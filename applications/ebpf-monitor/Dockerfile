@@ -10,12 +10,11 @@ RUN apk add --no-cache git gcc musl-dev linux-headers clang llvm elfutils-dev bp
 # Set working directory
 WORKDIR /app
 
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source code
+# Copy source code first
 COPY . .
+
+# Download and tidy dependencies
+RUN go mod download && go mod tidy
 
 # Try to generate CO-RE vmlinux.h from host BTF if available (may fail during image build)
 RUN mkdir -p bpf && (bpftool btf dump file /sys/kernel/btf/vmlinux format c > bpf/vmlinux.h || echo "no BTF on builder; continuing without CO-RE header")
