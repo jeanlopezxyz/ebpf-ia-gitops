@@ -74,7 +74,7 @@ int network_monitor(struct xdp_md *ctx) {
     evt->tcp_flags = 0;
     
     // Parse TCP/UDP ports
-    if (ip->protocol == IPPROTO_TCP) {
+    if (ip->protocol == 6) { // TCP
         struct tcphdr *tcp = (void *)ip + (ip->ihl * 4);
         if ((void *)(tcp + 1) > data_end) {
             bpf_ringbuf_discard(evt, 0);
@@ -105,7 +105,7 @@ int network_monitor(struct xdp_md *ctx) {
             bpf_map_update_elem(&port_scan_detector, &ip->saddr, &init, BPF_ANY);
         }
         
-    } else if (ip->protocol == IPPROTO_UDP) {
+    } else if (ip->protocol == 17) { // UDP
         struct udphdr *udp = (void *)ip + (ip->ihl * 4);
         if ((void *)(udp + 1) > data_end) {
             bpf_ringbuf_discard(evt, 0);

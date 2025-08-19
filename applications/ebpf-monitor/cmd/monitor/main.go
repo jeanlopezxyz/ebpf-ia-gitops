@@ -116,9 +116,8 @@ func runEBPF(ifName string, input chan<- proc.NetworkEvent) error {
                 log.Printf("Error parsing event: %v", err)
                 continue
             }
-            if record.LostSamples > 0 {
-                met.RingbufLostEventsTotal.Add(float64(record.LostSamples))
-            }
+            // Check for lost samples (if available in this version)
+            // met.RingbufLostEventsTotal.Add(float64(0))
             input <- toProcEvent(event)
         }
     }()
