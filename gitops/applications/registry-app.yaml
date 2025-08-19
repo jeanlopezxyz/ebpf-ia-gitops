@@ -13,7 +13,9 @@ spec:
   source:
     repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
     targetRevision: main
-    path: gitops/registry
+    path: helm/charts/registry
+    helm:
+      releaseName: registry
   destination:
     server: https://kubernetes.default.svc
     namespace: container-registry
