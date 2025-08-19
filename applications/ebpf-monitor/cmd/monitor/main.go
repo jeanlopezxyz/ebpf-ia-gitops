@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -17,18 +18,15 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	cfgpkg "github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/config"
-	httpserver "github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/httpserver"
-	met "github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/metrics"
-	ml "github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/mlclient"
-	proc "github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/processor"
+	"github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/config"
+	"github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/metrics"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall" network ../../bpf/network_monitor.c
 
 // NetworkEvent represents a network event from eBPF program
-// Must match the C struct in network_monitor.c
 type NetworkEvent struct {
 	SrcIP      uint32 `json:"src_ip"`
 	DstIP      uint32 `json:"dst_ip"`
@@ -42,53 +40,36 @@ type NetworkEvent struct {
 
 // Application represents the main application
 type Application struct {
-	config    *cfgpkg.Config
-	processor *proc.Processor
-	mlClient  *ml.Client
-	server    *httpserver.Server
-	objs      *networkObjects
-	link      link.Link
-	reader    *ringbuf.Reader
-	events    chan proc.NetworkEvent
-	ctx       context.Context
-	cancel    context.CancelFunc
+	config config.Config
+	objs   *networkObjects
+	link   link.Link
+	reader *ringbuf.Reader
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewApplication creates a new application instance
 func NewApplication() (*Application, error) {
 	// Load configuration
-	config := cfgpkg.New()
+	cfg := config.New()
 
 	// Initialize metrics
-	met.Init()
-
-	// Create ML client
-	mlClient, err := ml.NewClient(config.MLDetectorURL, config.HTTPClientTimeout)
-	if err != nil {
-		return nil, fmt.Errorf("creating ML client: %w", err)
-	}
-
-	// Create processor
-	processor := proc.NewProcessor(mlClient, config.StatsWindow)
-
-	// Create HTTP server
-	server := httpserver.NewServer(config.HTTPAddr, processor)
+	metrics.Init()
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Create event channel
-	events := make(chan proc.NetworkEvent, 1000)
-
 	return &Application{
-		config:    config,
-		processor: processor,
-		mlClient:  mlClient,
-		server:    server,
-		events:    events,
-		ctx:       ctx,
-		cancel:    cancel,
+		config: cfg,
+		ctx:    ctx,
+		cancel: cancel,
 	}, nil
+}
+
+// ipToString converts IP from uint32 to string
+func ipToString(ip uint32) string {
+	return fmt.Sprintf("%d.%d.%d.%d",
+		byte(ip), byte(ip>>8), byte(ip>>16), byte(ip>>24))
 }
 
 // setupEBPF initializes and loads the eBPF program
@@ -140,26 +121,11 @@ func (app *Application) findNetworkInterface() (*net.Interface, error) {
 	}
 
 	// Try common interfaces
-	fallbacks := []string{"eth0", "lo", "cilium_host", "cni0", "docker0", "br-+"}
+	fallbacks := []string{"eth0", "lo", "cilium_host", "cni0", "docker0"}
 	for _, name := range fallbacks {
-		if strings.HasSuffix(name, "+") {
-			// Handle pattern matching for bridges
-			prefix := strings.TrimSuffix(name, "+")
-			interfaces, err := net.Interfaces()
-			if err != nil {
-				continue
-			}
-			for _, iface := range interfaces {
-				if strings.HasPrefix(iface.Name, prefix) && iface.Flags&net.FlagUp != 0 {
-					log.Printf("✅ Using interface: %s", iface.Name)
-					return &iface, nil
-				}
-			}
-		} else {
-			if iface, err := net.InterfaceByName(name); err == nil && iface.Flags&net.FlagUp != 0 {
-				log.Printf("✅ Using fallback interface: %s", name)
-				return iface, nil
-			}
+		if iface, err := net.InterfaceByName(name); err == nil && iface.Flags&net.FlagUp != 0 {
+			log.Printf("✅ Using fallback interface: %s", name)
+			return iface, nil
 		}
 	}
 
@@ -172,7 +138,7 @@ func (app *Application) startEventProcessor() {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Printf("❌ Event processor panic: %v", r)
-				met.ProcessorErrorsTotal.Inc()
+				metrics.ProcessorErrorsTotal.Inc()
 			}
 		}()
 
@@ -190,7 +156,7 @@ func (app *Application) startEventProcessor() {
 						return
 					}
 					log.Printf("⚠️  Error reading from ring buffer: %v", err)
-					met.RingbufLostEventsTotal.Inc()
+					metrics.RingbufLostEventsTotal.Inc()
 					time.Sleep(10 * time.Millisecond)
 					continue
 				}
@@ -198,35 +164,39 @@ func (app *Application) startEventProcessor() {
 				var event NetworkEvent
 				if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
 					log.Printf("⚠️  Error parsing event: %v", err)
-					met.ParseErrorsTotal.Inc()
+					metrics.ParseErrorsTotal.Inc()
 					continue
 				}
 
-				// Convert to processor event and send to channel
-				procEvent := app.convertEvent(event)
-				select {
-				case app.events <- procEvent:
-					met.EventsProcessedTotal.Inc()
-				default:
-					// Channel full, drop event
-					met.EventsDroppedTotal.Inc()
-				}
+				// Process event
+				app.processEvent(event)
+				metrics.EventsProcessedTotal.Inc()
 			}
 		}
 	}()
 }
 
-// convertEvent converts eBPF event to processor event
-func (app *Application) convertEvent(event NetworkEvent) proc.NetworkEvent {
-	return proc.NetworkEvent{
-		SrcIP:      event.SrcIP,
-		DstIP:      event.DstIP,
-		SrcPort:    event.SrcPort,
-		DstPort:    event.DstPort,
-		Protocol:   event.Protocol,
-		PacketSize: event.PacketSize,
-		Timestamp:  event.Timestamp,
-		TCPFlags:   event.TCPFlags,
+// processEvent processes a single network event
+func (app *Application) processEvent(event NetworkEvent) {
+	// Update metrics
+	protocol := "other"
+	switch event.Protocol {
+	case 6:
+		protocol = "tcp"
+		metrics.SynPacketsTotal.Inc()
+	case 17:
+		protocol = "udp"
+	}
+
+	metrics.PacketsProcessed.WithLabelValues(protocol, "inbound").Inc()
+	metrics.BytesProcessed.WithLabelValues(protocol).Add(float64(event.PacketSize))
+
+	// Simple logging for demo purposes
+	if event.SrcPort != 0 || event.DstPort != 0 {
+		log.Printf("📊 %s:%d -> %s:%d [%s] %d bytes", 
+			ipToString(event.SrcIP), event.SrcPort,
+			ipToString(event.DstIP), event.DstPort,
+			protocol, event.PacketSize)
 	}
 }
 
@@ -238,27 +208,36 @@ func (app *Application) isShuttingDown(err error) bool {
 		   strings.Contains(errStr, "context canceled")
 }
 
-// startEventConsumer starts the event consumer that processes events
-func (app *Application) startEventConsumer() {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("❌ Event consumer panic: %v", r)
-			}
-		}()
+// startHTTPServer starts the HTTP server for metrics and health checks
+func (app *Application) startHTTPServer() error {
+	mux := http.NewServeMux()
+	
+	// Health check endpoint
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"healthy","service":"ebpf-monitor"}`))
+	})
 
-		log.Printf("🔄 Starting event consumer...")
-		
-		for {
-			select {
-			case <-app.ctx.Done():
-				log.Printf("🛑 Event consumer stopping...")
-				return
-			case event := <-app.events:
-				app.processor.ProcessEvent(event)
-			}
-		}
+	// Metrics endpoint
+	mux.Handle("/metrics", promhttp.Handler())
+
+	log.Printf("🌐 Starting HTTP server on %s", app.config.HTTPAddr)
+	
+	server := &http.Server{
+		Addr:    app.config.HTTPAddr,
+		Handler: mux,
+	}
+
+	go func() {
+		<-app.ctx.Done()
+		log.Printf("🛑 Shutting down HTTP server...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		server.Shutdown(ctx)
 	}()
+
+	return server.ListenAndServe()
 }
 
 // cleanup performs cleanup operations
@@ -283,22 +262,14 @@ func (app *Application) cleanup() {
 		app.objs.Close()
 	}
 	
-	// Stop HTTP server
-	if app.server != nil {
-		app.server.Stop()
-	}
-	
-	// Close event channel
-	close(app.events)
-	
 	log.Printf("✅ Cleanup completed")
 }
 
 // Run starts the application
 func (app *Application) Run() error {
 	log.Printf("🚀 Starting eBPF Network Monitor...")
-	log.Printf("📊 Config: Interface=%s, MLDetector=%s", 
-		app.config.Interface, app.config.MLDetectorURL)
+	log.Printf("📊 Config: Interface=%s, HTTPAddr=%s", 
+		app.config.Interface, app.config.HTTPAddr)
 
 	// Setup eBPF
 	if err := app.setupEBPF(); err != nil {
@@ -307,19 +278,13 @@ func (app *Application) Run() error {
 
 	// Start event processor
 	app.startEventProcessor()
-	
-	// Start event consumer
-	app.startEventConsumer()
 
-	// Start HTTP server
+	// Start HTTP server in background
 	go func() {
-		if err := app.server.Start(); err != nil {
+		if err := app.startHTTPServer(); err != nil && err != http.ErrServerClosed {
 			log.Printf("❌ HTTP server error: %v", err)
 		}
 	}()
-
-	// Start processor statistics
-	go app.processor.Start(app.ctx)
 
 	log.Printf("✅ eBPF Network Monitor ready on %s", app.config.HTTPAddr)
 
