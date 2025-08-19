@@ -4,6 +4,7 @@ import logging
 from flask import Blueprint, jsonify, request, Response
 
 from detector import ThreatDetector
+from pydantic import ValidationError
 from metrics import (
     generate_metrics_payload,
     REQUESTS_TOTAL,
@@ -42,7 +43,10 @@ def create_api(detector: ThreatDetector) -> Blueprint:
         try:
             with PROCESSING_TIME.time():
                 REQUESTS_TOTAL.inc()
-                req = DetectRequest(**(request.get_json(force=True) or {}))
+                try:
+                    req = DetectRequest(**(request.get_json(force=True) or {}))
+                except ValidationError as ve:
+                    return jsonify({"error": ve.errors()}), 400
                 result = detector.detect(req.to_features_dict())
                 # increment counters per threat
                 for t in result.get("threat_types", []):

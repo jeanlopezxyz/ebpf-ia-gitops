@@ -6,6 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: ebpf-ai-system
+    app.kubernetes.io/component: argocd-app
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -54,4 +55,3 @@ spec:
         factor: 2
         maxDuration: 3m
   revisionHistoryLimit: 10
-

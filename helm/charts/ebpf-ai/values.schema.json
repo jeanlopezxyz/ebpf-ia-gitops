@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ebpf-ai values schema",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "namespace": { "type": "string" },
+        "registry": { "type": "string" },
+        "imageTag": { "type": "string" }
+      }
+    },
+    "mlDetector": {
+      "type": "object",
+      "required": ["name", "image", "service"],
+      "properties": {
+        "name": { "type": "string" },
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          },
+          "required": ["repository"]
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "port": { "type": "integer" },
+            "targetPort": { "type": "integer" }
+          },
+          "required": ["port", "targetPort"]
+        },
+        "env": { "type": "array", "items": { "type": "object", "properties": { "name": {"type":"string"}, "value": {"type":"string"} }, "required": ["name","value"] } },
+        "serviceAccount": { "type": "object", "properties": { "create": {"type":"boolean"}, "name": {"type":"string"} } }
+      }
+    },
+    "ebpfMonitor": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "name": { "type": "string" },
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "image": { "type": "object" },
+        "service": { "type": "object" },
+        "env": { "type": "array" },
+        "serviceAccount": { "type": "object", "properties": { "create": {"type":"boolean"}, "name": {"type":"string"} } }
+      }
+    },
+    "autoscaling": { "type": "object" },
+    "networkPolicy": { "type": "object" },
+    "redis": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
+    "prometheus": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
+    "grafana": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
+    "serviceMonitor": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
+    "persistence": { "type": "object" },
+    "ingress": { "type": "object" },
+    "securityContext": { "type": "object" },
+    "metrics": { "type": "object", "properties": { "addPrometheusAnnotations": { "type": "boolean" } } }
+  }
+}
+

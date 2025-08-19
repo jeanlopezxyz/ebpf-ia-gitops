@@ -5,7 +5,9 @@ metadata:
   name: ml-detector-build
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: ml-detector-build
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: pipelinerun-ml-detector
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   pipelineRef:

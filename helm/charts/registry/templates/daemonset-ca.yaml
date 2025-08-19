@@ -5,14 +5,18 @@ metadata:
   namespace: kube-system
   labels:
     {{- include "registry.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ca-installer
 spec:
   selector:
     matchLabels:
-      app: registry-ca-installer
+      app.kubernetes.io/name: {{ include "registry.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: ca-installer
   template:
     metadata:
       labels:
-        app: registry-ca-installer
+        {{- include "registry.labels" . | nindent 8 }}
+        app.kubernetes.io/component: ca-installer
     spec:
       hostPID: true
       hostNetwork: true

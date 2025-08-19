@@ -2,6 +2,12 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: generate-tag
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: task-generate-tag
+    app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   workspaces:
     - name: source

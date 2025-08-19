@@ -4,8 +4,6 @@ metadata:
   name: dashboard-info
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-dashboard
+{{ include "tekton-dashboard.labels" . | indent 4 }}
 data:
   version: {{ default .Chart.AppVersion .Values.image.tag | quote }}
-

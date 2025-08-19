@@ -3,7 +3,12 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ .Values.mlDetector.name }}-hpa
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.mlDetector.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: autoscaler
+    app.kubernetes.io/part-of: ebpf-ai
   labels:
     app: {{ .Values.mlDetector.name }}
     component: hpa

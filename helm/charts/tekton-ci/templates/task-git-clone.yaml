@@ -2,7 +2,12 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: git-clone
+  namespace: {{ .Release.Namespace }}
   labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: task-git-clone
+    app.kubernetes.io/part-of: ebpf-ai-system
     app.kubernetes.io/version: "0.9"
 spec:
   description: Clone a git repo into the output workspace.

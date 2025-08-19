@@ -2,7 +2,12 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: argocd-sync
+  namespace: {{ .Release.Namespace }}
   labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: task-argocd-sync
+    app.kubernetes.io/part-of: ebpf-ai-system
     app.kubernetes.io/version: "0.2"
 spec:
   description: Sync an Argo CD application

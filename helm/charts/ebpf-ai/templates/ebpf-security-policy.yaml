@@ -1,13 +1,15 @@
 {{- if .Values.ebpfMonitor.enabled }}
+{{- if .Values.ebpfMonitor.serviceAccount.create }}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: ebpf-monitor
+  name: {{ include "ebpf-ai.ebpfMonitor.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "ebpf-ai.labels" . | nindent 4 }}
     app.kubernetes.io/component: ebpf-monitor
+{{- end }}
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -37,7 +39,7 @@ roleRef:
   name: ebpf-monitor
 subjects:
 - kind: ServiceAccount
-  name: ebpf-monitor
+  name: {{ include "ebpf-ai.ebpfMonitor.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
 
 {{- end }}

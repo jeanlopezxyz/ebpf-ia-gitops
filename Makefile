@@ -75,7 +75,7 @@ port-forward: ## Setup port forwarding for local access
 	@echo ""
 	@echo "Starting port forwards (press Ctrl+C to stop)..."
 	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
-	@kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80 &
+	@kubectl port-forward svc/grafana -n monitoring 3000:80 &
 	@kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
 	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
 	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
@@ -127,7 +127,7 @@ info: ## Show access information
 	@echo ""
 	@echo "🔗 Direct LoadBalancer Access:"
 	@echo "  ArgoCD: http://$(shell kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo 'pending')"
-	@echo "  Grafana: http://$(shell kubectl get svc kube-prometheus-stack-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo 'pending')"
+	@echo "  Grafana: http://$(shell kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo 'pending')"
 	@echo "  NGINX: http://$(shell kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo 'pending')"
 	@echo ""
 	@echo "🐳 Container Registry:"
@@ -139,3 +139,15 @@ info: ## Show access information
 	@echo "  make status        # Check system status"
 	@echo "  make logs          # View application logs"
 	@echo "  make sync          # Force sync GitOps"
+lint-helm: ## Lint all Helm charts
+	@helm lint helm/charts/ebpf-ai || true
+	@helm lint helm/charts/tekton-ci || true
+	@helm lint helm/charts/tekton-dashboard || true
+	@helm lint helm/charts/registry || true
+
+lint-code: ## Lint application code (Python + Go)
+	@echo "🧹 Linting Python (ml-detector) with ruff + black --check"
+	@command -v ruff >/dev/null 2>&1 && (cd applications/ml-detector && ruff .) || echo "ruff not installed"
+	@command -v black >/dev/null 2>&1 && (cd applications/ml-detector && black --check .) || echo "black not installed"
+	@echo "🧹 Linting Go (ebpf-monitor) with golangci-lint"
+	@command -v golangci-lint >/dev/null 2>&1 && (cd applications/ebpf-monitor && golangci-lint run ./... || true) || echo "golangci-lint not installed"

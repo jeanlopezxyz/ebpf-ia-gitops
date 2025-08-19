@@ -4,7 +4,9 @@ metadata:
   name: simple-ci
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: simple-ci
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: pipeline-simple
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   description: Simple CI pipeline - always uses latest tag

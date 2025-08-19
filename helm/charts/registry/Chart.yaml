@@ -4,3 +4,18 @@ description: Simple container registry (Docker Registry v2)
 type: application
 version: 0.1.0
 appVersion: "2"
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/ebpf/icon/color/ebpf-icon-color.png
+kubeVersion: ">=1.26.0-0"
+keywords:
+  - registry
+  - docker
+  - containerd
+  - images
+home: https://github.com/jeanlopezxyz/ebpf-ia-gitops
+sources:
+  - https://github.com/jeanlopezxyz/ebpf-ia-gitops
+maintainers:
+  - name: eBPF AI Team
+    email: team@ebpf-ai.local
+annotations:
+  artifacthub.io/category: other

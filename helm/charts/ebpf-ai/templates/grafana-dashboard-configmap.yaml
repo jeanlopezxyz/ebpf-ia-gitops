@@ -3,10 +3,12 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ebpf-ai-dashboard
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: grafana
-    component: dashboard
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: dashboard
+    app.kubernetes.io/part-of: ebpf-ai
     grafana_dashboard: "1"
 data:
   ebpf-ai-dashboard.json: |

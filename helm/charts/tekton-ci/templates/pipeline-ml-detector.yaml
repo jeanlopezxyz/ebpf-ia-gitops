@@ -4,7 +4,9 @@ metadata:
   name: ml-detector-ci
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: ml-detector-ci
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: pipeline-ml-detector
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   description: CI pipeline for ML Detector application
@@ -41,7 +43,7 @@ spec:
           value: $(params.git-revision)
     - name: generate-tag
       taskRef:
-        name: generate-semantic-tag
+        name: generate-tag
       runAfter:
         - fetch-source
       params:

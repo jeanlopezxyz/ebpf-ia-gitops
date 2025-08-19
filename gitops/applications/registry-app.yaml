@@ -6,6 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: container-registry
     app.kubernetes.io/part-of: ebpf-ai-system
+    app.kubernetes.io/component: argocd-app
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

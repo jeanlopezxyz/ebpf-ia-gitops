@@ -2,26 +2,34 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Values.mlDetector.name }}
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Values.mlDetector.name }}
-    component: ml-detector
-    version: {{ .Values.global.imageTag }}
+    app.kubernetes.io/name: {{ .Values.mlDetector.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ml-detector
+    app.kubernetes.io/part-of: ebpf-ai
+    app.kubernetes.io/version: {{ .Values.mlDetector.image.tag | default .Values.global.imageTag | quote }}
 spec:
   replicas: {{ .Values.mlDetector.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Values.mlDetector.name }}
+      app.kubernetes.io/name: {{ .Values.mlDetector.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.mlDetector.name }}
-        component: ml-detector
+        app.kubernetes.io/name: {{ .Values.mlDetector.name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: ml-detector
+        app.kubernetes.io/part-of: ebpf-ai
       annotations:
+        {{- if and .Values.metrics.addPrometheusAnnotations (not .Values.serviceMonitor.enabled) }}
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{ .Values.mlDetector.service.targetPort }}"
         prometheus.io/path: "/metrics"
+        {{- end }}
     spec:
+      serviceAccountName: {{ include "ebpf-ai.mlDetector.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
@@ -60,7 +68,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ .Values.mlDetector.name }}-pvc
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode }}

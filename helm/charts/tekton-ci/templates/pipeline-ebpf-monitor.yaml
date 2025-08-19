@@ -4,7 +4,9 @@ metadata:
   name: ebpf-monitor-ci
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: ebpf-monitor-ci
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: pipeline-ebpf-monitor
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   description: CI pipeline for eBPF Monitor application

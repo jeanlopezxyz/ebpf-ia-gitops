@@ -5,7 +5,9 @@ metadata:
   name: ebpf-monitor-build
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: ebpf-monitor-build
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: pipelinerun-ebpf-monitor
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   pipelineRef:

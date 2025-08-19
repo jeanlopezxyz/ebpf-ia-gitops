@@ -52,6 +52,9 @@ mlDetector:
       port: 5000
     initialDelaySeconds: 5
     periodSeconds: 5
+  serviceAccount:
+    create: true
+    name: ""
 
 # eBPF Monitor Configuration  
 ebpfMonitor:
@@ -102,6 +105,9 @@ ebpfMonitor:
       port: 8800
     initialDelaySeconds: 5
     periodSeconds: 5
+  serviceAccount:
+    create: true
+    name: ebpf-monitor
 
 # Attack Simulator Configuration
 attackSimulator:
@@ -151,7 +157,7 @@ redis:
 
 # Prometheus Configuration (Dependency)
 prometheus:
-  enabled: true
+  enabled: false
   alertmanager:
     enabled: true
     persistentVolume:
@@ -198,7 +204,7 @@ prometheus:
             
 # Grafana Configuration (Dependency)
 grafana:
-  enabled: true
+  enabled: false
   persistence:
     enabled: false
   service:
@@ -242,6 +248,10 @@ grafana:
 # ServiceMonitor CRDs (Prometheus Operator)
 serviceMonitor:
   enabled: false
+
+# Metrics annotations on pods (for non-operator Prometheus)
+metrics:
+  addPrometheusAnnotations: true
 
 # Storage Configuration
 persistence:

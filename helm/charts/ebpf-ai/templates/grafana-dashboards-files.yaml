@@ -2,7 +2,7 @@
 Generates one ConfigMap per JSON dashboard found under chart path grafana/*.json
 Dashboards are picked by Grafana sidecar via label grafana_dashboard=1
 */ -}}
-{{- $ns := .Values.global.namespace | default .Release.Namespace -}}
+{{- $ns := .Release.Namespace -}}
 {{- range $path, $file := .Files.Glob "grafana/*.json" }}
 apiVersion: v1
 kind: ConfigMap
@@ -10,8 +10,10 @@ metadata:
   name: grafana-dashboard-{{ base $path | trimSuffix ".json" | replace "." "-" | lower }}
   namespace: {{ $ns }}
   labels:
-    app: grafana
-    component: dashboard
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: dashboard
+    app.kubernetes.io/part-of: ebpf-ai
     grafana_dashboard: "1"
 data:
   {{ base $path }}: |

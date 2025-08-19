@@ -4,3 +4,6 @@ notebook==7.2.1
 matplotlib==3.8.4
 seaborn==0.13.2
 papermill==2.5.0
+pytest==8.2.2
+black==24.8.0
+ruff==0.6.9
