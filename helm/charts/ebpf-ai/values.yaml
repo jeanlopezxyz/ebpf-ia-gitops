@@ -2,7 +2,7 @@
 
 global:
   namespace: ebpf-security
-  registry: "192.168.67.2:5000"  # Registry direct port in lab mode
+  registry: "registry.container-registry.svc.cluster.local:5000"  # Secure registry with TLS
   imageTag: "latest"
   
 # ML Detector Configuration

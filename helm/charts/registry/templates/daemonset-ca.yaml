@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "registry.fullname" . }}-ca-installer
+  namespace: kube-system
+  labels:
+    {{- include "registry.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: registry-ca-installer
+  template:
+    metadata:
+      labels:
+        app: registry-ca-installer
+    spec:
+      hostPID: true
+      hostNetwork: true
+      containers:
+      - name: ca-installer
+        image: alpine:latest
+        command:
+        - sh
+        - -c
+        - |
+          # Install CA certificate for Docker
+          cp /ca/ca.crt /host/etc/docker/certs.d/registry.container-registry.svc.cluster.local:5000/ca.crt || true
+          cp /ca/ca.crt /host/etc/docker/certs.d/10.100.86.194:5000/ca.crt || true
+          cp /ca/ca.crt /host/etc/docker/certs.d/192.168.67.2:5000/ca.crt || true
+          
+          # For containerd
+          cp /ca/ca.crt /host/etc/containerd/certs.d/registry.container-registry.svc.cluster.local:5000/ca.crt || true
+          
+          # Keep pod running
+          sleep infinity
+        volumeMounts:
+        - name: ca-cert
+          mountPath: /ca
+          readOnly: true
+        - name: docker-certs
+          mountPath: /host/etc/docker/certs.d
+        - name: containerd-certs
+          mountPath: /host/etc/containerd/certs.d
+        securityContext:
+          privileged: true
+      volumes:
+      - name: ca-cert
+        configMap:
+          name: registry-ca
+      - name: docker-certs
+        hostPath:
+          path: /etc/docker/certs.d
+          type: DirectoryOrCreate
+      - name: containerd-certs
+        hostPath:
+          path: /etc/containerd/certs.d
+          type: DirectoryOrCreate
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Exists
