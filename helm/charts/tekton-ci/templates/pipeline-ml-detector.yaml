@@ -2,18 +2,12 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: ml-detector-ci
-  namespace: {{ .Release.Namespace }}
+  namespace: { { .Release.Namespace } }
   labels:
     app.kubernetes.io/name: ml-detector-ci
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   description: CI pipeline for ML Detector application
-  taskRunTemplate:
-    podTemplate:
-      securityContext:
-        fsGroup: 65532
-        runAsGroup: 65532
-        runAsUser: 65532
   params:
     - name: git-url
       description: Git repository URL
@@ -23,13 +17,13 @@ spec:
       default: main
     - name: image-registry
       description: Container registry URL
-      default: {{ .Values.imageRegistry | quote }}
+      default: { { .Values.imageRegistry | quote } }
     - name: image-name
       description: Image name
       default: ml-detector
     - name: argo-app-name
       description: Argo CD application name
-      default: {{ .Values.argoAppName | quote }}
+      default: { { .Values.argoAppName | quote } }
   workspaces:
     - name: shared-data
       description: Shared workspace for source code
