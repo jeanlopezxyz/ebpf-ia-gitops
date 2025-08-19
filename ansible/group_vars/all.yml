@@ -45,7 +45,7 @@ cilium:
 argocd:
   version: "5.51.6"
   namespace: "argocd"
-  admin_password: "argocd-admin"  # Change this in production!
+  admin_password: "admin123"  # Default local password for admin
   git_repo_url: "https://github.com/jeanlopezxyz/ebpf-ia-gitops.git"
   
 # Application configuration

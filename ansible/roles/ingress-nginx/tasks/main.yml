@@ -16,7 +16,7 @@
         metrics:
           enabled: true
           serviceMonitor:
-            enabled: true  # Now enabled since Prometheus is installed first
+            enabled: false  # Disabled - Prometheus CRDs not installed yet
         # Enable admission webhooks
         admissionWebhooks:
           enabled: true

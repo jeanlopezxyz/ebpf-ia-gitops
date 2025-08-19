@@ -50,7 +50,7 @@ spec:
         additionalPrometheusRulesMap: {}
         prometheusOperator:
           admissionWebhooks:
-            enabled: true
+            enabled: false  # Disabled to avoid stuck hooks in Minikube
         # Extra scrape configs (for ml-detector and ebpf-monitor)
         prometheus-node-exporter:
           enabled: true
