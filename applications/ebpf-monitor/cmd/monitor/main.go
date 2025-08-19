@@ -108,35 +108,38 @@ func runEBPF(ifName string, input chan<- proc.NetworkEvent) error {
 
     log.Printf("✅ eBPF program attached to %s", iface.Name)
 
-	// Read events with context cancellation
-    go func() {
-        defer log.Printf("Ring buffer reader stopped")
-        for {
-            record, err := rd.Read()
-            if err != nil {
-                if isRingbufClosed(err) {
-                    log.Printf("Ring buffer closed, stopping reader")
-                    return
-                }
-                log.Printf("Error reading from ring buffer: %v", err)
-                met.RingbufLostEventsTotal.Inc()
-                
-                // Add small delay to prevent busy loop on persistent errors
-                time.Sleep(100 * time.Millisecond)
-                continue
+	// Read events - blocking call to keep eBPF program alive
+    log.Printf("Starting ring buffer reader loop...")
+    for {
+        record, err := rd.Read()
+        if err != nil {
+            if isRingbufClosed(err) {
+                log.Printf("Ring buffer closed, stopping reader")
+                break
             }
-
-            var event NetworkEvent
-            if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
-                log.Printf("Error parsing event: %v", err)
-                continue
-            }
-            // Check for lost samples (if available in this version)
-            // met.RingbufLostEventsTotal.Add(float64(0))
-            input <- toProcEvent(event)
+            log.Printf("Error reading from ring buffer: %v", err)
+            met.RingbufLostEventsTotal.Inc()
+            
+            // Add small delay to prevent busy loop on persistent errors
+            time.Sleep(100 * time.Millisecond)
+            continue
         }
-    }()
 
+        var event NetworkEvent
+        if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
+            log.Printf("Error parsing event: %v", err)
+            continue
+        }
+        
+        log.Printf("Captured packet: %s:%d -> %s:%d", 
+            ipToString(event.SrcIP), event.SrcPort,
+            ipToString(event.DstIP), event.DstPort)
+        
+        // Send to processing
+        input <- toProcEvent(event)
+    }
+    
+    log.Printf("Ring buffer reader stopped")
     return nil
 }
 
