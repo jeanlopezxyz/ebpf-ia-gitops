@@ -28,14 +28,19 @@ spec:
         - sh
         - -c
         - |
-          # Install CA certificate for Docker
-          cp /ca/ca.crt /host/etc/docker/certs.d/registry.container-registry.svc.cluster.local:5000/ca.crt || true
-          cp /ca/ca.crt /host/etc/docker/certs.d/10.100.86.194:5000/ca.crt || true
-          cp /ca/ca.crt /host/etc/docker/certs.d/192.168.67.2:5000/ca.crt || true
+          # Create directories and install CA certificate for Docker
+          mkdir -p /host/etc/docker/certs.d/registry.container-registry.svc.cluster.local:5000
+          mkdir -p /host/etc/docker/certs.d/10.100.86.194:5000
+          mkdir -p /host/etc/docker/certs.d/192.168.67.2:5000
+          mkdir -p /host/etc/containerd/certs.d/registry.container-registry.svc.cluster.local:5000
           
-          # For containerd
-          cp /ca/ca.crt /host/etc/containerd/certs.d/registry.container-registry.svc.cluster.local:5000/ca.crt || true
+          # Copy CA certificates
+          cp /ca/ca.crt /host/etc/docker/certs.d/registry.container-registry.svc.cluster.local:5000/ca.crt
+          cp /ca/ca.crt /host/etc/docker/certs.d/10.100.86.194:5000/ca.crt
+          cp /ca/ca.crt /host/etc/docker/certs.d/192.168.67.2:5000/ca.crt
+          cp /ca/ca.crt /host/etc/containerd/certs.d/registry.container-registry.svc.cluster.local:5000/ca.crt
           
+          echo "CA certificates installed successfully"
           # Keep pod running
           sleep infinity
         volumeMounts:
