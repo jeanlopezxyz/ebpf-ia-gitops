@@ -39,10 +39,13 @@ spec:
       script: |
         #!/usr/bin/env sh
         set -eu
-        # Fix Git ownership issues
-        git config --global --add safe.directory $(workspaces.output.path)
-        git config --global user.name "tekton-pipeline"
-        git config --global user.email "tekton@pipeline.local"
+        # Create local git config directory with proper permissions
+        mkdir -p /tmp/.git-config
+        export HOME=/tmp/.git-config
+        # Configure git locally (not globally)
+        git config --add safe.directory $(workspaces.output.path)
+        git config user.name "tekton-pipeline"
+        git config user.email "tekton@pipeline.local"
         git init
         git remote add origin "$(params.url)"
         if [ -n "$(params.revision)" ]; then
