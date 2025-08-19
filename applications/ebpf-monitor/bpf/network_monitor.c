@@ -1,6 +1,7 @@
 // network_monitor.c - eBPF program for network monitoring
 #include <vmlinux.h>
 #include <linux/bpf.h>
+#include <bpf/bpf_core_read.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
@@ -120,14 +121,15 @@ int network_monitor(struct xdp_md *ctx) {
             return XDP_PASS;
 
         // Validate IHL
-        if (ip->ihl < 5) {
+        __u8 ihl = BPF_CORE_READ_BITFIELD_PROBED(ip, ihl);
+        if (ihl < 5) {
             bpf_ringbuf_discard(evt, 0);
             return XDP_PASS;
         }
-        __u32 ihl_bytes = ip->ihl * 4;
-        evt->src_ip = bpf_ntohl(ip->saddr);
-        evt->dst_ip = bpf_ntohl(ip->daddr);
-        evt->protocol = ip->protocol;
+        __u32 ihl_bytes = ((__u32)ihl) * 4;
+        evt->src_ip = bpf_ntohl(BPF_CORE_READ(ip, saddr));
+        evt->dst_ip = bpf_ntohl(BPF_CORE_READ(ip, daddr));
+        evt->protocol = BPF_CORE_READ(ip, protocol);
         evt->packet_size = (unsigned long)data_end - (unsigned long)ctx->data;
         evt->timestamp = bpf_ktime_get_ns();
         evt->tcp_flags = 0;
@@ -136,20 +138,20 @@ int network_monitor(struct xdp_md *ctx) {
         if (ip->protocol == 6) { // TCP
             struct tcphdr *tcp = l4;
             if ((void *)(tcp + 1) > data_end) { bpf_ringbuf_discard(evt, 0); return XDP_PASS; }
-            evt->src_port = bpf_ntohs(tcp->source);
-            evt->dst_port = bpf_ntohs(tcp->dest);
-            if (tcp->fin) evt->tcp_flags |= TCP_FIN;
-            if (tcp->syn) evt->tcp_flags |= TCP_SYN;
-            if (tcp->rst) evt->tcp_flags |= TCP_RST;
-            if (tcp->ack) evt->tcp_flags |= TCP_ACK;
-            if (tcp->syn && !tcp->ack) {
+            evt->src_port = bpf_ntohs(BPF_CORE_READ(tcp, source));
+            evt->dst_port = bpf_ntohs(BPF_CORE_READ(tcp, dest));
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, fin)) evt->tcp_flags |= TCP_FIN;
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, syn)) evt->tcp_flags |= TCP_SYN;
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, rst)) evt->tcp_flags |= TCP_RST;
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, ack)) evt->tcp_flags |= TCP_ACK;
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, syn) && !BPF_CORE_READ_BITFIELD_PROBED(tcp, ack)) {
                 update_unique_port(evt->src_ip, evt->dst_port);
             }
         } else if (ip->protocol == 17) { // UDP
             struct udphdr *udp = l4;
             if ((void *)(udp + 1) > data_end) { bpf_ringbuf_discard(evt, 0); return XDP_PASS; }
-            evt->src_port = bpf_ntohs(udp->source);
-            evt->dst_port = bpf_ntohs(udp->dest);
+            evt->src_port = bpf_ntohs(BPF_CORE_READ(udp, source));
+            evt->dst_port = bpf_ntohs(BPF_CORE_READ(udp, dest));
         } else {
             evt->src_port = 0; evt->dst_port = 0;
         }
@@ -165,25 +167,25 @@ int network_monitor(struct xdp_md *ctx) {
         struct network_event *evt = bpf_ringbuf_reserve(&events, sizeof(*evt), 0);
         if (!evt) return XDP_PASS;
         evt->src_ip = 0; evt->dst_ip = 0; // not supported
-        evt->protocol = ip6->nexthdr;
+        evt->protocol = BPF_CORE_READ(ip6, nexthdr);
         evt->packet_size = (unsigned long)data_end - (unsigned long)ctx->data;
         evt->timestamp = bpf_ktime_get_ns();
         evt->tcp_flags = 0;
         void *l4 = (void *)(ip6 + 1);
-        if (ip6->nexthdr == 6) {
+        if (BPF_CORE_READ(ip6, nexthdr) == 6) {
             struct tcphdr *tcp = l4;
             if ((void *)(tcp + 1) > data_end) { bpf_ringbuf_discard(evt, 0); return XDP_PASS; }
-            evt->src_port = bpf_ntohs(tcp->source);
-            evt->dst_port = bpf_ntohs(tcp->dest);
-            if (tcp->fin) evt->tcp_flags |= TCP_FIN;
-            if (tcp->syn) evt->tcp_flags |= TCP_SYN;
-            if (tcp->rst) evt->tcp_flags |= TCP_RST;
-            if (tcp->ack) evt->tcp_flags |= TCP_ACK;
-        } else if (ip6->nexthdr == 17) {
+            evt->src_port = bpf_ntohs(BPF_CORE_READ(tcp, source));
+            evt->dst_port = bpf_ntohs(BPF_CORE_READ(tcp, dest));
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, fin)) evt->tcp_flags |= TCP_FIN;
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, syn)) evt->tcp_flags |= TCP_SYN;
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, rst)) evt->tcp_flags |= TCP_RST;
+            if (BPF_CORE_READ_BITFIELD_PROBED(tcp, ack)) evt->tcp_flags |= TCP_ACK;
+        } else if (BPF_CORE_READ(ip6, nexthdr) == 17) {
             struct udphdr *udp = l4;
             if ((void *)(udp + 1) > data_end) { bpf_ringbuf_discard(evt, 0); return XDP_PASS; }
-            evt->src_port = bpf_ntohs(udp->source);
-            evt->dst_port = bpf_ntohs(udp->dest);
+            evt->src_port = bpf_ntohs(BPF_CORE_READ(udp, source));
+            evt->dst_port = bpf_ntohs(BPF_CORE_READ(udp, dest));
         } else {
             evt->src_port = 0; evt->dst_port = 0;
         }

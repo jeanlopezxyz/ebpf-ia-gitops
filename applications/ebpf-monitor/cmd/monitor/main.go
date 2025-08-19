@@ -210,8 +210,24 @@ func main() {
         }()
     }
 
+    // Function to dump BPF unique ports per IP for debug
+    var dump func() any
+    if portMap != nil {
+        dump = func() any {
+            type item struct{ IP string `json:"ip"`; Count uint32 `json:"count"` }
+            out := []item{}
+            it := portMap.Iterate()
+            var k uint32
+            var v uint32
+            for it.Next(&k, &v) {
+                out = append(out, item{IP: ipToString(k), Count: v})
+            }
+            return out
+        }
+    }
+
     // HTTP server with timeouts + readiness
-    srv := httpserver.New(cfg.HTTPAddr, cfg.ReadHeaderTimeout, cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout, pr.Stats, func() bool { return ready })
+    srv := httpserver.New(cfg.HTTPAddr, cfg.ReadHeaderTimeout, cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout, pr.Stats, func() bool { return ready }, dump)
 
     // graceful shutdown on SIGINT/SIGTERM
     done := make(chan struct{})

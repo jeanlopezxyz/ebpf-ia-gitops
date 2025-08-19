@@ -36,6 +36,8 @@ mlDetector:
       value: "true"
     - name: PROMETHEUS_MULTIPROC_DIR
       value: "/tmp/prometheus"
+    - name: PROMETHEUS_URL
+      value: "http://ebpf-ai-prometheus-server:9090"
       
   livenessProbe:
     httpGet:
@@ -236,6 +238,10 @@ grafana:
       folder: /tmp/dashboards
       provider:
         foldersFromFilesStructure: true
+
+# ServiceMonitor CRDs (Prometheus Operator)
+serviceMonitor:
+  enabled: false
 
 # Storage Configuration
 persistence:

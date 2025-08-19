@@ -15,16 +15,20 @@ type Server struct {
     srv   *http.Server
     stats func() p.NetworkStats
     ready func() bool
+    dumpBPF func() any
 }
 
-func New(addr string, readHeader, read, write, idle time.Duration, stats func() p.NetworkStats, ready func() bool) *Server {
+func New(addr string, readHeader, read, write, idle time.Duration, stats func() p.NetworkStats, ready func() bool, dumpBPF func() any) *Server {
     r := mux.NewRouter()
-    s := &Server{stats: stats, ready: ready}
+    s := &Server{stats: stats, ready: ready, dumpBPF: dumpBPF}
     r.HandleFunc("/", s.rootHandler)
     r.HandleFunc("/health", s.healthHandler)
     r.HandleFunc("/ready", s.readyHandler)
     r.HandleFunc("/stats", s.statsHandler)
     r.Handle("/metrics", promhttp.Handler())
+    if dumpBPF != nil {
+        r.HandleFunc("/debug/unique-ports", s.uniquePortsHandler)
+    }
     s.srv = &http.Server{
         Addr:              addr,
         Handler:           r,
@@ -67,7 +71,15 @@ func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
         "service": "eBPF Monitor",
         "version": "2.1.0",
         "description": "eBPF-based network monitoring with ML integration",
-        "endpoints": {"health":"/health","ready":"/ready","metrics":"/metrics","stats":"/stats"}
+        "endpoints": {"health":"/health","ready":"/ready","metrics":"/metrics","stats":"/stats","unique_ports":"/debug/unique-ports"}
     }`))
 }
 
+func (s *Server) uniquePortsHandler(w http.ResponseWriter, r *http.Request) {
+    if s.dumpBPF == nil {
+        http.Error(w, "not available", http.StatusNotFound)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(s.dumpBPF())
+}
