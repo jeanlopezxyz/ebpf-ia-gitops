@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: kube-prometheus-stack
+  name: prometheus
   namespace: argocd
   labels:
-    app.kubernetes.io/name: kube-prometheus-stack
+    app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: ebpf-ai-system
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -15,38 +15,19 @@ spec:
     chart: kube-prometheus-stack
     targetRevision: 76.4.0
     helm:
-      releaseName: kube-prometheus-stack
+      releaseName: prometheus
       values: |
         prometheus:
           prometheusSpec:
-            storageSpec:
-              volumeClaimTemplate:
-                spec:
-                  accessModes: ["ReadWriteOnce"]
-                  resources:
-                    requests:
-                      storage: 10Gi
-            retention: 30d
+            storageSpec: {}
+            retention: 7d
             serviceMonitorSelectorNilUsesHelmValues: false
             podMonitorSelectorNilUsesHelmValues: false
             ruleSelectorNilUsesHelmValues: false
         grafana:
-          enabled: true
-          adminPassword: admin123
-          persistence:
-            enabled: false
-          service:
-            type: ClusterIP
+          enabled: false
         alertmanager:
-          enabled: true
-          alertmanagerSpec:
-            storage:
-              volumeClaimTemplate:
-                spec:
-                  accessModes: ["ReadWriteOnce"]
-                  resources:
-                    requests:
-                      storage: 2Gi
+          enabled: false
         nodeExporter:
           enabled: true
         kubeStateMetrics:
