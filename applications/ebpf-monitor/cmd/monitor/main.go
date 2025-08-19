@@ -190,7 +190,7 @@ func (app *Application) startEventProcessor() {
 						return
 					}
 					log.Printf("⚠️  Error reading from ring buffer: %v", err)
-					met.RingbufErrorsTotal.Inc()
+					met.RingbufLostEventsTotal.Inc()
 					time.Sleep(10 * time.Millisecond)
 					continue
 				}

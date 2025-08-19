@@ -87,6 +87,42 @@ var (
     )
 )
 
+// Additional metrics for the main application
+var (
+    EventsProcessedTotal = prometheus.NewCounter(
+        prometheus.CounterOpts{
+            Name: "ebpf_events_processed_total",
+            Help: "Total number of events processed from ring buffer",
+        },
+    )
+
+    EventsDroppedTotal = prometheus.NewCounter(
+        prometheus.CounterOpts{
+            Name: "ebpf_events_dropped_total", 
+            Help: "Total number of events dropped due to channel backpressure",
+        },
+    )
+
+    ParseErrorsTotal = prometheus.NewCounter(
+        prometheus.CounterOpts{
+            Name: "ebpf_parse_errors_total",
+            Help: "Total number of event parsing errors",
+        },
+    )
+
+    ProcessorErrorsTotal = prometheus.NewCounter(
+        prometheus.CounterOpts{
+            Name: "ebpf_processor_errors_total",
+            Help: "Total number of processor errors/panics",
+        },
+    )
+)
+
+// Init initializes and registers all metrics
+func Init() {
+    Register()
+}
+
 func Register() {
     prometheus.MustRegister(PacketsProcessed)
     prometheus.MustRegister(BytesProcessed)
@@ -99,4 +135,8 @@ func Register() {
     prometheus.MustRegister(RingbufLostEventsTotal)
     prometheus.MustRegister(MLPostFailuresTotal)
     prometheus.MustRegister(BPFUniquePorts)
+    prometheus.MustRegister(EventsProcessedTotal)
+    prometheus.MustRegister(EventsDroppedTotal)
+    prometheus.MustRegister(ParseErrorsTotal)
+    prometheus.MustRegister(ProcessorErrorsTotal)
 }
