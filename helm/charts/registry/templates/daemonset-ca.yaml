@@ -50,8 +50,8 @@ spec:
           privileged: true
       volumes:
       - name: ca-cert
-        configMap:
-          name: registry-ca
+        secret:
+          secretName: registry-ca
       - name: docker-certs
         hostPath:
           path: /etc/docker/certs.d
