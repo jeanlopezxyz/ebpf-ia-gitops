@@ -17,13 +17,13 @@ spec:
       labels:
         app: {{ .Values.mlDetector.name }}
         component: ml-detector
-    spec:
-      securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{ .Values.mlDetector.service.targetPort }}"
         prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
       - name: {{ .Values.mlDetector.name }}
         image: "{{ .Values.global.registry }}/{{ .Values.mlDetector.image.repository }}:{{ .Values.mlDetector.image.tag | default .Values.global.imageTag }}"
