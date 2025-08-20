@@ -52,12 +52,8 @@ grafana:
         options:
           path: /var/lib/grafana/dashboards/ebpf-ai
           
-  # Dashboards configuration (use ConfigMap approach)
-  dashboards:
-    default:
-      threat-detection:
-        json: |
-{{ .Files.Get "grafana/threat-detection-dashboard.json" | indent 10 }}
+  # Dashboards configuration (disabled - using sidecar approach)
+  dashboards: {}
         
   # Sidecar for automatic dashboard discovery
   sidecar:

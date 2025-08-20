@@ -76,7 +76,7 @@ port-forward: ## Setup port forwarding for local access
 	@echo ""
 	@echo "Starting port forwards (press Ctrl+C to stop)..."
 	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
-	@kubectl port-forward svc/grafana -n monitoring 3000:3000 &
+	@kubectl port-forward svc/grafana -n grafana 3000:3000 &
 	@kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
 	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
 	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
@@ -92,7 +92,7 @@ threats: ## Open threat detection dashboard via port-forward
 	@echo "Setting up port-forward to Grafana..."
 	@pkill -f "kubectl port-forward.*grafana" || true
 	@sleep 1
-	@kubectl port-forward svc/grafana -n monitoring 3000:3000 > /dev/null 2>&1 &
+	@kubectl port-forward svc/grafana -n grafana 3000:3000 > /dev/null 2>&1 &
 	@sleep 3
 	@echo "🌐 Grafana available at: http://localhost:3000"
 	@echo "📊 Threat Dashboard: http://localhost:3000/d/threat-detection/ebpf-ai-threat-detection"
