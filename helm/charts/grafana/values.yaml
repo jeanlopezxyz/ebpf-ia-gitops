@@ -1,0 +1,81 @@
+# Grafana Configuration for eBPF-AI Platform
+
+grafana:
+  enabled: true
+  
+  # Basic configuration
+  adminPassword: admin123
+  
+  # Service configuration
+  service:
+    type: LoadBalancer
+    port: 3000
+    
+  # Persistence for dashboards and data
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClassName: ""
+    
+  # Enhanced plugins for eBPF-AI visualizations
+  plugins:
+    - grafana-piechart-panel
+    - grafana-worldmap-panel
+    - grafana-polystat-panel
+    - grafana-flowcharting-panel
+    
+  # Datasource configuration
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server.monitoring.svc.cluster.local:80
+          access: proxy
+          isDefault: true
+          jsonData:
+            timeInterval: "15s"
+            
+  # Dashboard providers
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'ebpf-ai-dashboards'
+        orgId: 1
+        folder: 'eBPF-AI'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/ebpf-ai
+          
+  # Sidecar for automatic dashboard discovery
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+      folder: /tmp/dashboards
+      
+  # Grafana configuration
+  grafana.ini:
+    server:
+      root_url: http://localhost:3000/grafana
+    security:
+      admin_password: admin123
+    users:
+      auto_assign_org_role: Viewer
+    auth:
+      disable_login_form: false
+      
+  # Resource limits
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi

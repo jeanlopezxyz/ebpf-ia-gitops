@@ -1,0 +1,86 @@
+# Prometheus Configuration for eBPF-AI Platform
+
+# Prometheus server configuration
+prometheus:
+  enabled: true
+  
+  # AlertManager configuration
+  alertmanager:
+    enabled: true
+    persistentVolume:
+      enabled: true
+      size: 2Gi
+      storageClass: ""
+    service:
+      type: ClusterIP
+      port: 9093
+      
+  # Prometheus server configuration  
+  server:
+    persistentVolume:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+    service:
+      type: ClusterIP
+      port: 80
+    retention: "30d"
+    
+    # Custom scrape configurations for eBPF-AI applications
+    extraScrapeConfigs: |
+      # eBPF Monitor metrics
+      - job_name: 'ebpf-monitor'
+        static_configs:
+        - targets: ['ebpf-monitor.ebpf-security.svc.cluster.local:8800']
+        metrics_path: /metrics
+        scrape_interval: 15s
+        scrape_timeout: 10s
+        honor_labels: true
+        
+      # ML Detector metrics  
+      - job_name: 'ml-detector'
+        static_configs:  
+        - targets: ['ml-detector.ebpf-security.svc.cluster.local:5000']
+        metrics_path: /metrics
+        scrape_interval: 15s
+        scrape_timeout: 10s
+        honor_labels: true
+        
+      # Container Registry metrics
+      - job_name: 'container-registry'
+        static_configs:
+        - targets: ['registry.container-registry.svc.cluster.local:5000']
+        metrics_path: /metrics
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        honor_labels: true
+        
+  # Push Gateway for custom metrics
+  pushgateway:
+    enabled: true
+    persistentVolume:
+      enabled: false
+    service:
+      type: ClusterIP
+      port: 9091
+      
+  # Node Exporter for system metrics
+  nodeExporter:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 9100
+      
+  # Kube State Metrics for Kubernetes metrics
+  kubeStateMetrics:
+    enabled: true
+    service:
+      port: 8080
+
+# ServiceMonitor for Prometheus Operator compatibility
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: ebpf-ai-platform

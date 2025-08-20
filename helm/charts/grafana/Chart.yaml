@@ -1,0 +1,28 @@
+apiVersion: v2
+name: grafana
+description: Grafana dashboards for eBPF-AI platform with custom visualizations
+type: application
+version: 1.0.0
+appVersion: "v11.1.0"
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/grafana/icon/color/grafana-icon-color.png
+kubeVersion: ">=1.26.0-0"
+keywords:
+  - grafana
+  - dashboards
+  - visualization
+  - observability
+  - ebpf
+  - ai
+home: https://github.com/jeanlopezxyz/ebpf-ia-gitops
+sources:
+  - https://github.com/grafana/helm-charts
+maintainers:
+  - name: eBPF AI Team
+    email: team@ebpf-ai.local
+dependencies:
+  - name: grafana
+    version: "7.0.8"
+    repository: "https://grafana.github.io/helm-charts"
+annotations:
+  artifacthub.io/category: monitoring
+  artifacthub.io/keywords: grafana,dashboard,ebpf,ai,visualization
