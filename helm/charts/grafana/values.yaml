@@ -17,12 +17,11 @@ grafana:
     size: 1Gi
     storageClassName: ""
     
-  # Enhanced plugins for eBPF-AI visualizations
+  # Enhanced plugins for eBPF-AI visualizations (compatible with Grafana v10+)
   plugins:
     - grafana-piechart-panel
     - grafana-worldmap-panel
     - grafana-polystat-panel
-    - grafana-flowcharting-panel
     
   # Datasource configuration
   datasources:

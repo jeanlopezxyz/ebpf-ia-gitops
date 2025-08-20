@@ -26,6 +26,20 @@ prometheus:
       port: 80
     retention: "30d"
     
+    # Fix reload configuration
+    configReloader:
+      enabled: true
+    reloadStrategy: "http"
+    
+    # Resource limits to prevent OOM
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    
     # Custom scrape configurations for eBPF-AI applications
     extraScrapeConfigs: |
       # eBPF Monitor metrics
