@@ -1,0 +1,41 @@
+{{- if .Values.mlDetector.persistence.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.mlDetector.name }}-setup-permissions
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.mlDetector.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ml-detector-setup
+    app.kubernetes.io/part-of: ebpf-ai
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: setup-permissions
+        image: alpine:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Setting up ML model directory permissions..."
+          chown -R 1000:1000 /models
+          chmod -R 775 /models
+          echo "Permissions set: $(ls -la /models)"
+          echo "Setup completed successfully"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+        securityContext:
+          runAsUser: 0  # Runs as root to set permissions
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.mlDetector.name }}-models
+{{- end }}
