@@ -130,7 +130,7 @@ info: ## Show access information
 	@echo "🔍 eBPF + AI GitOps Access Information:"
 	@echo ""
 	@echo "🌐 NodePort Access (direct via Minikube IP):"
-	@MINIKUBE_IP=$$(minikube ip 2>/dev/null || echo 'pending'); \
+	@MINIKUBE_IP=$$(minikube ip -p lab-ebpf-ia 2>/dev/null || minikube ip 2>/dev/null || echo 'pending'); \
 	echo "  Grafana Dashboard: http://$$MINIKUBE_IP:30300 (admin/admin123)"; \
 	echo "  Container Registry: http://$$MINIKUBE_IP:30050"; \
 	echo "  ArgoCD UI: http://$$MINIKUBE_IP:31055 (admin/admin123)"; \
@@ -144,7 +144,7 @@ info: ## Show access information
 	@echo "  eBPF Monitor: http://localhost:8800"
 	@echo ""
 	@echo "🐳 Container Registry Commands:"
-	@MINIKUBE_IP=$$(minikube ip 2>/dev/null || echo 'MINIKUBE_IP'); \
+	@MINIKUBE_IP=$$(minikube ip -p lab-ebpf-ia 2>/dev/null || minikube ip 2>/dev/null || echo 'MINIKUBE_IP'); \
 	echo "  docker tag image:latest $$MINIKUBE_IP:30050/image:latest"; \
 	echo "  docker push $$MINIKUBE_IP:30050/image:latest"
 	@echo ""
@@ -156,7 +156,7 @@ info: ## Show access information
 
 nodeport: ## Open NodePort services in browser
 	@echo "🌐 Opening NodePort services..."
-	@MINIKUBE_IP=$$(minikube ip 2>/dev/null); \
+	@MINIKUBE_IP=$$(minikube ip -p lab-ebpf-ia 2>/dev/null || minikube ip 2>/dev/null); \
 	if [ "$$MINIKUBE_IP" != "" ]; then \
 		echo "Opening Grafana Dashboard..."; \
 		open "http://$$MINIKUBE_IP:30300" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:30300" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:30300"; \
