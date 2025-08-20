@@ -34,6 +34,25 @@ spec:
         fsGroup: 1000  # detector group
         runAsUser: 1000 # detector user
         runAsGroup: 1000
+      {{- if .Values.mlDetector.persistence.enabled }}
+      initContainers:
+      - name: setup-data-permissions
+        image: busybox:latest
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Setting up /data/models permissions..."
+          mkdir -p /data/models
+          chown -R 1000:1000 /data/models
+          chmod -R 755 /data/models
+          echo "Permissions set successfully: $(ls -la /data/)"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /data/models
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+      {{- end }}
       containers:
       - name: {{ .Values.mlDetector.name }}
         image: "{{ .Values.global.registry }}/{{ .Values.mlDetector.image.repository }}:{{ .Values.mlDetector.image.tag | default .Values.global.imageTag }}"
