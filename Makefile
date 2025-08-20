@@ -66,24 +66,36 @@ port-forward: ## Setup port forwarding for local access
 	@echo "Killing existing port forwards..."
 	@pkill -f "kubectl port-forward" || true
 	@sleep 2
-	@echo "ArgoCD will be available at: http://localhost:8081"
+	@echo "ArgoCD will be available at: http://localhost:8080"
 	@echo "Grafana will be available at: http://localhost:3000"
 	@echo "Prometheus will be available at: http://localhost:9090"
 	@echo "ML Detector API will be available at: http://localhost:5000"
 	@echo "eBPF Monitor metrics will be available at: http://localhost:8800"
 	@echo "Tekton Dashboard will be available at: http://localhost:9097"
+	@echo "Container Registry will be available at: http://localhost:5000"
 	@echo ""
 	@echo "Starting port forwards (press Ctrl+C to stop)..."
 	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
-	@kubectl port-forward svc/grafana -n monitoring 3000:80 &
+	@kubectl port-forward svc/grafana -n monitoring 3000:3000 &
 	@kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
 	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
 	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
-	@kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9097:9097 &
+	@kubectl port-forward svc/tekton-dashboard -n tekton 9097:9097 &
+	@kubectl port-forward svc/registry -n container-registry 5001:5000 &
 	@wait
 
 dashboard: ## Open Minikube dashboard
 	minikube dashboard --profile ebpf-gitops
+
+threats: ## Open threat detection dashboard directly
+	@echo "🚨 Opening eBPF + AI Threat Detection Dashboard..."
+	@MINIKUBE_IP=$$(minikube ip 2>/dev/null); \
+	if [ "$$MINIKUBE_IP" != "" ]; then \
+		echo "Grafana Threat Dashboard: http://$$MINIKUBE_IP:30300/d/ebpf-threats/ebpf-ai-threat-detection"; \
+		open "http://$$MINIKUBE_IP:30300" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:30300" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:30300"; \
+	else \
+		echo "❌ Minikube not running. Try: make bootstrap"; \
+	fi
 
 clean: ## Clean up everything (delete cluster and resources)
 	@echo "🧹 Cleaning up eBPF + AI GitOps environment..."
@@ -117,31 +129,47 @@ dev: ## Setup development environment with hot-reload
 info: ## Show access information
 	@echo "🔍 eBPF + AI GitOps Access Information:"
 	@echo ""
-	@echo "🌐 Ingress Access (via domain names):"
-	@echo "  Main Dashboard: http://ebpf-ai.local"
-	@echo "  ML Detector API: http://ebpf-ai.local/api"
-	@echo "  Grafana: http://ebpf-ai.local/grafana (admin/admin123)"
-	@echo "  Prometheus: http://ebpf-ai.local/prometheus"
-	@echo "  ArgoCD: http://ebpf-ai.local/argocd (admin/admin123)"
-	@echo "  Registry: http://registry.local"
+	@echo "🌐 NodePort Access (direct via Minikube IP):"
+	@MINIKUBE_IP=$$(minikube ip 2>/dev/null || echo 'pending'); \
+	echo "  Grafana Dashboard: http://$$MINIKUBE_IP:30300 (admin/admin123)"; \
+	echo "  Container Registry: http://$$MINIKUBE_IP:30050"; \
+	echo "  ArgoCD UI: http://$$MINIKUBE_IP:31055 (admin/admin123)"; \
+	echo "  Tekton Dashboard: http://$$MINIKUBE_IP:30097"
 	@echo ""
-	@echo "🔗 Direct LoadBalancer Access:"
-	@echo "  ArgoCD: http://$(shell kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo 'pending')"
-	@echo "  Grafana: http://$(shell kubectl get svc grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo 'pending')"
-	@echo "  NGINX: http://$(shell kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo 'pending')"
+	@echo "🔗 Port Forward Access (via localhost):"
+	@echo "  make port-forward  # Setup all port forwards"
+	@echo "  Grafana: http://localhost:3000"
+	@echo "  Prometheus: http://localhost:9090"
+	@echo "  ML Detector API: http://localhost:5000"
+	@echo "  eBPF Monitor: http://localhost:8800"
 	@echo ""
-	@echo "🐳 Container Registry:"
-	@echo "  Registry: $(shell minikube ip --profile ebpf-gitops 2>/dev/null || echo 'pending'):30050"
-	@echo "  Usage: docker tag image:latest $(shell minikube ip --profile ebpf-gitops 2>/dev/null || echo 'MINIKUBE_IP'):30050/image:latest"
+	@echo "🐳 Container Registry Commands:"
+	@MINIKUBE_IP=$$(minikube ip 2>/dev/null || echo 'MINIKUBE_IP'); \
+	echo "  docker tag image:latest $$MINIKUBE_IP:30050/image:latest"; \
+	echo "  docker push $$MINIKUBE_IP:30050/image:latest"
 	@echo ""
 	@echo "🚀 Quick Commands:"
-	@echo "  make port-forward  # Local access via port forwarding"
+	@echo "  make nodeport      # Open services via NodePort"
 	@echo "  make status        # Check system status"
 	@echo "  make logs          # View application logs"
 	@echo "  make sync          # Force sync GitOps"
+
+nodeport: ## Open NodePort services in browser
+	@echo "🌐 Opening NodePort services..."
+	@MINIKUBE_IP=$$(minikube ip 2>/dev/null); \
+	if [ "$$MINIKUBE_IP" != "" ]; then \
+		echo "Opening Grafana Dashboard..."; \
+		open "http://$$MINIKUBE_IP:30300" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:30300" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:30300"; \
+		echo "Opening ArgoCD..."; \
+		open "http://$$MINIKUBE_IP:31055" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:31055" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:31055"; \
+	else \
+		echo "❌ Minikube not running or IP not available"; \
+	fi
 lint-helm: ## Lint all Helm charts
+	@echo "🧹 Linting Helm charts..."
 	@helm lint helm/charts/ebpf-ai || true
-	@helm lint helm/charts/tekton-ci || true
+	@helm lint helm/charts/prometheus || true
+	@helm lint helm/charts/grafana || true
 	@helm lint helm/charts/tekton-dashboard || true
 	@helm lint helm/charts/registry || true
 
