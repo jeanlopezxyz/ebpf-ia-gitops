@@ -51,29 +51,14 @@ spec:
           {{- toYaml .Values.mlDetector.livenessProbe | nindent 10 }}
         readinessProbe:
           {{- toYaml .Values.mlDetector.readinessProbe | nindent 10 }}
-        {{- if .Values.persistence.enabled }}
+        {{- if .Values.mlDetector.persistence.enabled }}
         volumeMounts:
         - name: model-storage
           mountPath: /app/models
         {{- end }}
-      {{- if .Values.persistence.enabled }}
+      {{- if .Values.mlDetector.persistence.enabled }}
       volumes:
       - name: model-storage
         persistentVolumeClaim:
-          claimName: {{ .Values.mlDetector.name }}-pvc
+          claimName: {{ .Values.mlDetector.name }}-models
       {{- end }}
----
-{{- if .Values.persistence.enabled }}
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ .Values.mlDetector.name }}-pvc
-  namespace: {{ .Release.Namespace }}
-spec:
-  accessModes:
-    - {{ .Values.persistence.accessMode }}
-  storageClassName: {{ .Values.persistence.storageClass }}
-  resources:
-    requests:
-      storage: {{ .Values.persistence.size }}
-{{- end }}

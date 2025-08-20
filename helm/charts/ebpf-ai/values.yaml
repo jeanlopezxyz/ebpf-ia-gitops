@@ -27,6 +27,12 @@ mlDetector:
       cpu: 500m
       memory: 1Gi
       
+  # Persistent storage for ML models
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""  # Use default storage class
+      
   env:
     - name: MODEL_PATH
       value: "/app/models"
