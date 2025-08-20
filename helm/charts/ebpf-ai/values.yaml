@@ -10,7 +10,7 @@ mlDetector:
   name: ml-detector
   replicaCount: 2
   image:
-    repository: ml-detector
+    repository: ml-detector  
     tag: latest
     pullPolicy: Always
   
