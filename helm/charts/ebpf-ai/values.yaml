@@ -12,7 +12,7 @@ mlDetector:
   image:
     repository: ml-detector  
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   
   service:
     type: ClusterIP
@@ -70,7 +70,7 @@ ebpfMonitor:
   image:
     repository: ebpf-monitor
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
     
   service:
     type: ClusterIP
@@ -123,7 +123,7 @@ attackSimulator:
   image:
     repository: attack-simulator
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
     
   env:
     - name: ATTACK_MODE
