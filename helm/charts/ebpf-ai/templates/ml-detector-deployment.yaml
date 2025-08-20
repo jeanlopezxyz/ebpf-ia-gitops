@@ -32,7 +32,6 @@ spec:
       serviceAccountName: {{ include "ebpf-ai.mlDetector.serviceAccountName" . }}
       securityContext:
         fsGroup: 1000  # detector group
-        runAsGroup: 1000
       {{- if .Values.mlDetector.persistence.enabled }}
       initContainers:
       - name: setup-models-directory
