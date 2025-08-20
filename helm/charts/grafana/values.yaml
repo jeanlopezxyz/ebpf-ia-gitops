@@ -52,6 +52,12 @@ grafana:
         options:
           path: /var/lib/grafana/dashboards/ebpf-ai
           
+  # Dashboards configuration
+  dashboards:
+    ebpf-ai:
+      threat-detection:
+        file: grafana/threat-detection-dashboard.json
+        
   # Sidecar for automatic dashboard discovery
   sidecar:
     dashboards:

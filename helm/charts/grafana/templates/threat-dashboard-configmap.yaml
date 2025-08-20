@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-threat-detection
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: dashboard
+    app.kubernetes.io/part-of: ebpf-ai-platform
+    grafana_dashboard: "1"  # Label for sidecar discovery
+data:
+  threat-detection-dashboard.json: |
+{{ .Files.Get "grafana/threat-detection-dashboard.json" | indent 4 }}
