@@ -32,6 +32,17 @@ spec:
       serviceAccountName: {{ include "ebpf-ai.mlDetector.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- if .Values.mlDetector.persistence.enabled }}
+      initContainers:
+      - name: fix-permissions
+        image: alpine:latest
+        command: ['sh', '-c', 'chown -R 1000:1000 /app/models && chmod -R 755 /app/models']
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/models
+        securityContext:
+          runAsUser: 0
+      {{- end }}
       containers:
       - name: {{ .Values.mlDetector.name }}
         image: "{{ .Values.global.registry }}/{{ .Values.mlDetector.image.repository }}:{{ .Values.mlDetector.image.tag | default .Values.global.imageTag }}"
