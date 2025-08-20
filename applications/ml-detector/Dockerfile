@@ -32,14 +32,14 @@ ENV PYTHONUNBUFFERED=1 \
 RUN useradd --create-home --shell /bin/bash detector
 
 # Create directories with proper ownership
-RUN mkdir -p /app/models /tmp/models /tmp/prometheus && \
+RUN mkdir -p /data/models /tmp/models /tmp/prometheus && \
     chown -R detector:detector /app && \
+    chown -R detector:detector /data && \
     chown -R detector:detector /tmp/models && \
-    chown -R detector:detector /tmp/prometheus && \
-    chmod -R 775 /app/models
+    chown -R detector:detector /tmp/prometheus
 
-# Set environment variable for model path  
-ENV MODEL_PATH=/app/models
+# Set environment variable for model path (will be overridden by Kubernetes env)
+ENV MODEL_PATH=/data/models
 
 USER detector
 

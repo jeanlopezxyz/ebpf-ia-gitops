@@ -60,7 +60,7 @@ spec:
         {{- if .Values.mlDetector.persistence.enabled }}
         volumeMounts:
         - name: model-storage
-          mountPath: /app/models
+          mountPath: /data/models
         {{- end }}
       {{- if .Values.mlDetector.persistence.enabled }}
       volumes:

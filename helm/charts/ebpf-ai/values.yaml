@@ -35,7 +35,7 @@ mlDetector:
       
   env:
     - name: MODEL_PATH
-      value: "/tmp/models"  # Use temp directory with write permissions
+      value: "/data/models"  # Standard data directory for ML models
     - name: TRAINING_ENABLED
       value: "true"  # Enable model re-training
     - name: BASELINE_ENABLED
