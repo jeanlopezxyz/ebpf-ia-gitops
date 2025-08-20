@@ -1,0 +1,33 @@
+{{- if .Values.pipelineRuns.enabled }}
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: ebpf-ai-chart-update
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: pipelinerun-ebpf-ai-chart
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  pipelineRef:
+    name: helm-charts-ci
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  params:
+    - name: git-url
+      value: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      value: main
+    - name: charts-path
+      value: helm/charts
+    - name: commit-message
+      value: "Update eBPF-AI chart dependencies and .tgz files"
+{{- end }}
