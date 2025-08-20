@@ -404,9 +404,14 @@ func (app *Application) startMLClient() {
 					"syn_packets":        stats.SYNPackets,
 				}
 
+				log.Printf("📊 Sending to ML: pps=%.2f, bps=%.2f, ips=%d, ports=%d", 
+					stats.PacketsPerSecond, stats.BytesPerSecond, stats.UniqueIPs, stats.UniquePorts)
+
 				if err := app.sendToMLDetector(features); err != nil {
 					log.Printf("⚠️  ML Detector error: %v", err)
 					metrics.MLPostFailuresTotal.Inc()
+				} else {
+					log.Printf("✅ ML Detector: data sent successfully")
 				}
 			}
 		}
