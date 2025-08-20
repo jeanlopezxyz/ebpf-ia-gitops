@@ -1,41 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: grafana
+  name: monitoring
   namespace: argocd
   labels:
-    app.kubernetes.io/name: grafana
-    app.kubernetes.io/part-of: ebpf-ai-system
-    app.kubernetes.io/component: argocd-app
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/part-of: ebpf-ai-platform
+    app.kubernetes.io/component: observability
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: grafana
-    targetRevision: 7.0.0
+    repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    targetRevision: main
+    path: helm/charts/monitoring
     helm:
-      values: |
-        # Simple Grafana-only deployment
-        adminPassword: admin123
-        service:
-          type: NodePort
-        persistence:
-          enabled: false
-        sidecar:
-          dashboards:
-            enabled: true
-            label: grafana_dashboard
-            searchNamespace: true
-        grafana.ini:
-          server:
-            root_url: http://localhost:3000
-        ingress:
-          enabled: true
-          ingressClassName: nginx
-          hosts:
-            - grafana.local
+      releaseName: monitoring
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

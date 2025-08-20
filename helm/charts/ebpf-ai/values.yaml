@@ -37,13 +37,13 @@ mlDetector:
     - name: MODEL_PATH
       value: "/app/models"
     - name: TRAINING_ENABLED
-      value: "true"
+      value: "true"  # Enable model re-training
     - name: BASELINE_ENABLED
       value: "true"
     - name: PROMETHEUS_MULTIPROC_DIR
       value: "/tmp/prometheus"
     - name: PROMETHEUS_URL
-      value: "http://ebpf-ai-prometheus-server:9090"
+      value: "http://prometheus-server.monitoring.svc.cluster.local:9090"
       
   livenessProbe:
     httpGet:
