@@ -1,13 +1,13 @@
-{{- if .Values.pipelineRuns.enabled }}
+# pipelineRuns enabled by default
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: ebpf-ai-chart-update
-  namespace: {{ .Release.Namespace }}
+  name: helm-charts-dependency-update
+  namespace: ebpf-security
   labels:
     app.kubernetes.io/name: tekton-ci
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: pipelinerun-ebpf-ai-chart
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: pipelinerun-helm-charts
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
   pipelineRef:
@@ -29,5 +29,4 @@ spec:
     - name: charts-path
       value: helm/charts
     - name: commit-message
-      value: "Update eBPF-AI chart dependencies and .tgz files"
-{{- end }}
+      value: "Auto-update Helm chart dependencies and .tgz files"

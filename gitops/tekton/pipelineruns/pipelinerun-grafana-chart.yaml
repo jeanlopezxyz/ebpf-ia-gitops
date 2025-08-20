@@ -1,12 +1,12 @@
-{{- if .Values.pipelineRuns.enabled }}
+# pipelineRuns enabled by default
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: grafana-chart-update
-  namespace: {{ .Release.Namespace }}
+  namespace: ebpf-security
   labels:
     app.kubernetes.io/name: tekton-ci
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: tekton-ci
     app.kubernetes.io/component: pipelinerun-grafana-chart
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
@@ -30,4 +30,3 @@ spec:
       value: helm/charts
     - name: commit-message
       value: "Update Grafana chart dependencies and .tgz files"
-{{- end }}

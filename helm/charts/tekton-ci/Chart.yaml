@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tekton-ci
-description: Tekton CI pipelines, tasks, and PipelineRuns for eBPF-AI
+description: Tekton CI configuration and serviceaccount for eBPF-AI (pipelines moved to gitops/tekton/)
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

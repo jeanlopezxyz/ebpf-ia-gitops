@@ -1,12 +1,12 @@
-{{- if .Values.pipelineRuns.enabled }}
+# pipelineRuns enabled by default
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: ml-detector-build
-  namespace: {{ .Release.Namespace }}
+  namespace: ebpf-security
   labels:
     app.kubernetes.io/name: tekton-ci
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: tekton-ci
     app.kubernetes.io/component: pipelinerun-ml-detector
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
@@ -34,11 +34,11 @@ spec:
     - name: git-revision
       value: main
     - name: image-registry
-      value: {{ .Values.imageRegistry | quote }}
+      value: registry.container-registry.svc.cluster.local:5000
     - name: image-name
       value: ml-detector
     - name: dockerfile-path
       value: ./applications/ml-detector/Dockerfile
     - name: context-path
       value: ./applications/ml-detector
-{{- end }}
+
