@@ -530,13 +530,14 @@ func (app *Application) Run() error {
 	// Start ML detector client
 	go app.startMLClient()
 
-	// Try to setup eBPF, fallback to simulation if fails
+	// eBPF setup (will attempt but expect to fallback to simulation in containers)
+	log.Printf("🔄 Attempting eBPF setup...")
 	if err := app.setupEBPF(); err != nil {
-		log.Printf("⚠️  eBPF setup failed: %v", err)
-		log.Printf("🔄 Falling back to network traffic simulation...")
+		log.Printf("⚠️  eBPF setup failed (expected in containers): %v", err)
+		log.Printf("🔄 Running in simulation mode with realistic traffic patterns...")
 		go app.simulateTraffic()
 	} else {
-		log.Printf("✅ eBPF monitoring enabled - capturing REAL network traffic!")
+		log.Printf("🎉 eBPF monitoring enabled - capturing REAL network traffic!")
 		go app.startEventProcessor()
 	}
 
