@@ -19,9 +19,8 @@ RUN go mod download && go mod tidy
 # Try to generate CO-RE vmlinux.h from host BTF if available (may fail during image build)
 RUN mkdir -p bpf && (bpftool btf dump file /sys/kernel/btf/vmlinux format c > bpf/vmlinux.h || echo "no BTF on builder; continuing without CO-RE header")
 
-# Generate eBPF Go bindings (if bpf2go is available)
-# Generate eBPF Go bindings (if bpf2go is available). If it fails, runtime will fallback to simulation mode.
-RUN go generate ./... || echo "bpf2go generation failed; will run in simulation mode if eBPF not available"
+# Generate eBPF Go bindings (optional - will fallback to simulation if fails)
+RUN go generate ./... 2>/dev/null || echo "eBPF generation skipped - will use simulation mode"
 
 # Build application with eBPF support (auto-detect architecture)
 RUN CGO_ENABLED=1 go build -a -installsuffix cgo -o ebpf-monitor ./cmd/monitor
