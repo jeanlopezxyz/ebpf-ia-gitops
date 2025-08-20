@@ -29,12 +29,13 @@ ENV PYTHONUNBUFFERED=1 \
     PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus
 
 # Create non-root user for security
-RUN useradd --create-home --shell /bin/bash detector && \
-    mkdir -p /app/models && \
+RUN useradd --create-home --shell /bin/bash detector
+
+# Create directories with proper ownership
+RUN mkdir -p /app/models /tmp/models /tmp/prometheus && \
     chown -R detector:detector /app && \
-    mkdir -p /tmp/models && \
     chown -R detector:detector /tmp/models && \
-    mkdir -p /tmp/prometheus && chown -R detector:detector /tmp/prometheus
+    chown -R detector:detector /tmp/prometheus
 
 # Set environment variable for model path  
 ENV MODEL_PATH=/app/models
