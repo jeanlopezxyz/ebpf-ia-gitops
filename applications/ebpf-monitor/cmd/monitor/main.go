@@ -143,7 +143,7 @@ func (app *Application) findInterface() (*net.Interface, error) {
 
 	// Try common Kubernetes/container interfaces
 	candidates := []string{"eth0", "cilium_host", "cni0", "docker0", "veth0", "lo"}
-	
+
 	for _, name := range candidates {
 		if iface, err := net.InterfaceByName(name); err == nil && iface.Flags&net.FlagUp != 0 {
 			log.Printf("✅ Using interface: %s", name)
@@ -203,7 +203,7 @@ func (app *Application) startEventProcessor() {
 // isClosedError checks if error indicates closed ring buffer
 func (app *Application) isClosedError(err error) bool {
 	errStr := err.Error()
-	return strings.Contains(errStr, "closed") || 
+	return strings.Contains(errStr, "closed") ||
 		   strings.Contains(errStr, "EOF") ||
 		   strings.Contains(errStr, "context canceled")
 }
@@ -228,7 +228,7 @@ func (app *Application) processEvent(event NetworkEvent) {
 			metrics.SynPacketsTotal.Inc()
 		}
 		metrics.PacketsProcessed.WithLabelValues("tcp", "inbound").Inc()
-	case 17: // UDP  
+	case 17: // UDP
 		app.udpPackets++
 		metrics.PacketsProcessed.WithLabelValues("udp", "inbound").Inc()
 	default:
@@ -252,7 +252,7 @@ func (app *Application) processEvent(event NetworkEvent) {
 
 	// Log interesting packets
 	if event.SrcPort != 0 || event.DstPort != 0 {
-		log.Printf("🌐 eBPF CAPTURED: %s:%d -> %s:%d [%s] %d bytes flags:0x%02x", 
+		log.Printf("🌐 eBPF CAPTURED: %s:%d -> %s:%d [%s] %d bytes flags:0x%02x",
 			ipToString(event.SrcIP), event.SrcPort,
 			ipToString(event.DstIP), event.DstPort,
 			protocolName(event.Protocol), event.PacketSize, event.TCPFlags)
@@ -331,7 +331,7 @@ func (app *Application) startHTTPServer() error {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":    "healthy",
-			"service":   "ebpf-monitor", 
+			"service":   "ebpf-monitor",
 			"version":   "3.0.0",
 			"mode":      "eBPF_real_traffic",
 			"timestamp": time.Now().Format(time.RFC3339),
@@ -394,7 +394,7 @@ func (app *Application) startMLClient() {
 				return
 			case <-ticker.C:
 				stats := app.getStats()
-				
+
 				features := map[string]interface{}{
 					"packets_per_second": stats.PacketsPerSecond,
 					"bytes_per_second":   stats.BytesPerSecond,
@@ -405,7 +405,7 @@ func (app *Application) startMLClient() {
 					"syn_packets":        stats.SYNPackets,
 				}
 
-				log.Printf("📊 Sending to ML: pps=%.2f, bps=%.2f, ips=%d, ports=%d", 
+				log.Printf("📊 Sending to ML: pps=%.2f, bps=%.2f, ips=%d, ports=%d",
 					stats.PacketsPerSecond, stats.BytesPerSecond, stats.UniqueIPs, stats.UniquePorts)
 
 				if err := app.sendToMLDetector(features); err != nil {
@@ -448,28 +448,28 @@ func (app *Application) sendToMLDetector(features map[string]interface{}) error 
 // cleanup releases eBPF resources
 func (app *Application) cleanup() {
 	log.Printf("🧹 Cleaning up eBPF resources...")
-	
+
 	app.cancel()
-	
+
 	if app.reader != nil {
 		app.reader.Close()
 	}
-	
+
 	if app.link != nil {
 		app.link.Close()
 	}
-	
+
 	if app.objs != nil {
 		app.objs.Close()
 	}
-	
+
 	log.Printf("✅ eBPF cleanup completed")
 }
 
 // Run starts the eBPF application
 func (app *Application) Run() error {
 	log.Printf("🚀 Starting eBPF Network Monitor v3.0.0")
-	log.Printf("📊 Interface: %s, HTTP: %s, ML: %s", 
+	log.Printf("📊 Interface: %s, HTTP: %s, ML: %s",
 		app.config.Interface, app.config.HTTPAddr, app.config.MLDetectorURL)
 
 	// Setup eBPF program
@@ -498,10 +498,10 @@ func (app *Application) Run() error {
 	// Wait for shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	<-sigChan
 	log.Printf("🛑 Shutdown signal received")
-	
+
 	app.cleanup()
 	return nil
 }

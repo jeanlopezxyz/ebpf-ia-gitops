@@ -87,15 +87,18 @@ port-forward: ## Setup port forwarding for local access
 dashboard: ## Open Minikube dashboard
 	minikube dashboard --profile ebpf-gitops
 
-threats: ## Open threat detection dashboard directly
+threats: ## Open threat detection dashboard via port-forward
 	@echo "🚨 Opening eBPF + AI Threat Detection Dashboard..."
-	@MINIKUBE_IP=$$(minikube ip 2>/dev/null); \
-	if [ "$$MINIKUBE_IP" != "" ]; then \
-		echo "Grafana Threat Dashboard: http://$$MINIKUBE_IP:30300/d/ebpf-threats/ebpf-ai-threat-detection"; \
-		open "http://$$MINIKUBE_IP:30300" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:30300" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:30300"; \
-	else \
-		echo "❌ Minikube not running. Try: make bootstrap"; \
-	fi
+	@echo "Setting up port-forward to Grafana..."
+	@pkill -f "kubectl port-forward.*grafana" || true
+	@sleep 1
+	@kubectl port-forward svc/grafana -n monitoring 3000:3000 > /dev/null 2>&1 &
+	@sleep 3
+	@echo "🌐 Grafana available at: http://localhost:3000"
+	@echo "📊 Threat Dashboard: http://localhost:3000/d/threat-detection/ebpf-ai-threat-detection"
+	@echo "🔑 Login: admin / admin123"
+	@echo ""
+	@open "http://localhost:3000" 2>/dev/null || xdg-open "http://localhost:3000" 2>/dev/null || echo "Open manually: http://localhost:3000"
 
 clean: ## Clean up everything (delete cluster and resources)
 	@echo "🧹 Cleaning up eBPF + AI GitOps environment..."
@@ -136,20 +139,27 @@ info: ## Show access information
 	echo "  ArgoCD UI: http://$$MINIKUBE_IP:31055 (admin/admin123)"; \
 	echo "  Tekton Dashboard: http://$$MINIKUBE_IP:30097"
 	@echo ""
-	@echo "🔗 Port Forward Access (via localhost):"
-	@echo "  make port-forward  # Setup all port forwards"
-	@echo "  Grafana: http://localhost:3000"
-	@echo "  Prometheus: http://localhost:9090"
-	@echo "  ML Detector API: http://localhost:5000"
-	@echo "  eBPF Monitor: http://localhost:8800"
+	@echo "🔗 Port Forward Access (RECOMMENDED - always works):"
+	@echo "  Run: make port-forward"
+	@echo "  Then access:"
+	@echo "    Grafana Dashboard: http://localhost:3000 (admin/admin123)"
+	@echo "    Prometheus: http://localhost:9090"
+	@echo "    ArgoCD UI: http://localhost:8080 (admin/admin123)"
+	@echo "    ML Detector API: http://localhost:5000"
+	@echo "    eBPF Monitor: http://localhost:8800"
+	@echo "    Tekton Dashboard: http://localhost:9097"
+	@echo "    Container Registry: http://localhost:5001"
 	@echo ""
-	@echo "🐳 Container Registry Commands:"
-	@MINIKUBE_IP=$$(minikube ip -p lab-ebpf-ia 2>/dev/null || minikube ip 2>/dev/null || echo 'MINIKUBE_IP'); \
-	echo "  docker tag image:latest $$MINIKUBE_IP:30050/image:latest"; \
-	echo "  docker push $$MINIKUBE_IP:30050/image:latest"
+	@echo "🚨 Threat Detection Dashboard:"
+	@echo "  Run: make threats  # Port-forwards and opens Grafana threat dashboard"
+	@echo ""
+	@echo "🐳 Container Registry (via port-forward):"
+	@echo "  docker tag image:latest localhost:5001/image:latest"
+	@echo "  docker push localhost:5001/image:latest"
 	@echo ""
 	@echo "🚀 Quick Commands:"
-	@echo "  make nodeport      # Open services via NodePort"
+	@echo "  make port-forward  # Setup all services (RECOMMENDED)"
+	@echo "  make threats       # Open threat detection dashboard"
 	@echo "  make status        # Check system status"
 	@echo "  make logs          # View application logs"
 	@echo "  make sync          # Force sync GitOps"
