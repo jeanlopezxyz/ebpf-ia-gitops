@@ -29,7 +29,7 @@ mlDetector:
       
   # Persistent storage for ML models
   persistence:
-    enabled: true
+    enabled: false  # Disable to avoid permission issues
     size: 1Gi
     storageClass: ""  # Use default storage class
       
