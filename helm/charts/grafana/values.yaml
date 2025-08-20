@@ -8,8 +8,9 @@ grafana:
   
   # Service configuration
   service:
-    type: LoadBalancer
+    type: NodePort
     port: 3000
+    nodePort: 30300
     
   # Persistence for dashboards and data
   persistence:
