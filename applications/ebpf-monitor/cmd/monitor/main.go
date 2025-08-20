@@ -26,6 +26,32 @@ import (
 	"github.com/jeanlopezxyz/ebpf-ia-gitops/applications/ebpf-monitor/pkg/metrics"
 )
 
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall" network ../../bpf/network_monitor.c
+
+// Stub types for when bpf2go generation fails
+type networkObjects struct {
+	NetworkMonitor   *ebpf.Program `ebpf:"network_monitor"`
+	Events          *ebpf.Map     `ebpf:"events"`
+	PortUniqueCount *ebpf.Map     `ebpf:"port_unique_count"`
+}
+
+func (o *networkObjects) Close() error {
+	if o.NetworkMonitor != nil {
+		o.NetworkMonitor.Close()
+	}
+	if o.Events != nil {
+		o.Events.Close()
+	}
+	if o.PortUniqueCount != nil {
+		o.PortUniqueCount.Close()
+	}
+	return nil
+}
+
+func loadNetworkObjects(obj *networkObjects, opts *ebpf.CollectionOptions) error {
+	return fmt.Errorf("eBPF objects not generated - bpf2go compilation failed during container build")
+}
+
 // NetworkEvent represents a network event
 type NetworkEvent struct {
 	SrcIP      uint32 `json:"src_ip"`
