@@ -14,7 +14,12 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import OneClassSVM
 
-from metrics import ANOMALY_SCORE, MODEL_ACCURACY
+from metrics import (
+    ANOMALY_SCORE, MODEL_ACCURACY, THREATS_DETECTED, THREAT_CONFIDENCE,
+    PORT_SCAN_DETECTED, DDOS_DETECTED, DATA_EXFILTRATION_DETECTED, 
+    ANOMALY_DETECTED, FEATURE_VALUES, THREAT_SEVERITY, MODEL_RETRAIN_COUNT,
+    MODEL_RETRAIN_DURATION
+)
 
 logger = logging.getLogger(__name__)
 
@@ -166,12 +171,57 @@ class ThreatDetector:
         rule_threats = self.detect_rule_based(data)
         ml_threats = self.detect_ml_based(features)
         all_threats = rule_threats + ml_threats
+        
+        # Update feature metrics
+        FEATURE_VALUES.labels(feature_name="packets_per_second").set(features["packets_per_second"])
+        FEATURE_VALUES.labels(feature_name="bytes_per_second").set(features["bytes_per_second"])
+        FEATURE_VALUES.labels(feature_name="unique_ips").set(features["unique_ips"])
+        FEATURE_VALUES.labels(feature_name="unique_ports").set(features["unique_ports"])
+        
         if all_threats:
             max_conf = max(t[1] for t in all_threats)
+            threat_types = [t[0] for t in all_threats]
+            
+            # Record threat detection metrics
+            confidence_level = "high" if max_conf > 0.7 else "medium" if max_conf > 0.4 else "low"
+            source_ip = features.get("source_ip", "unknown")
+            
+            for threat_type in threat_types:
+                # General threat counter
+                THREATS_DETECTED.labels(
+                    threat_type=threat_type, 
+                    confidence_level=confidence_level,
+                    source_ip=source_ip
+                ).inc()
+                
+                # Confidence histogram
+                THREAT_CONFIDENCE.labels(threat_type=threat_type).observe(max_conf)
+                
+                # Specific threat type counters
+                if threat_type == "port_scan":
+                    severity = "high" if max_conf > 0.8 else "medium" if max_conf > 0.5 else "low"
+                    PORT_SCAN_DETECTED.labels(severity=severity).inc()
+                elif threat_type in ["ddos", "high_traffic"]:
+                    attack_type = "volumetric" if features["bytes_per_second"] > features["packets_per_second"] * 1000 else "packet_flood"
+                    DDOS_DETECTED.labels(attack_type=attack_type).inc()
+                elif threat_type == "data_exfiltration":
+                    direction = "outbound" if features.get("direction") == "out" else "inbound"
+                    DATA_EXFILTRATION_DETECTED.labels(direction=direction).inc()
+                elif threat_type.startswith("ml_"):
+                    model_type = "ensemble" if len(ml_threats) > 1 else "single"
+                    severity = "critical" if max_conf > 0.9 else "high" if max_conf > 0.7 else "medium"
+                    ANOMALY_DETECTED.labels(model_type=model_type, severity=severity).inc()
+            
+            # Update threat severity gauge
+            for threat_type in threat_types:
+                THREAT_SEVERITY.labels(threat_category=threat_type).set(max_conf)
+            
+            logger.warning(f"🚨 THREAT DETECTED: {threat_types} (confidence: {max_conf:.2f})")
+            
             return {
                 "threat_detected": True,
                 "confidence": float(max_conf),
-                "threat_types": [t[0] for t in all_threats],
+                "threat_types": threat_types,
                 "scores": {"rule_based": len(rule_threats) > 0, "ml_based": len(ml_threats) > 0},
             }
         return {"threat_detected": False, "confidence": 0.0, "threat_types": [], "scores": {}}
@@ -185,22 +235,41 @@ class ThreatDetector:
                 logger.error(f"Background training error: {e}")
 
     def train_models(self) -> None:
+        start_time = time.time()
+        
         with self._lock:
             if len(self.training_window) < 100:
                 return
+                
             X = np.array(list(self.training_window))
+            trigger_reason = "initial" if not hasattr(self.scaler, "mean_") else "incremental"
+            
             if not hasattr(self.scaler, "mean_"):
                 self.scaler.fit(X)
+                MODEL_RETRAIN_COUNT.labels(model_name="scaler", trigger_reason=trigger_reason).inc()
             else:
                 # incremental update
                 self.scaler.partial_fit(X)
+                MODEL_RETRAIN_COUNT.labels(model_name="scaler", trigger_reason=trigger_reason).inc()
+                
             Xs = self.scaler.transform(X)
             self.kmeans.partial_fit(Xs)
+            MODEL_RETRAIN_COUNT.labels(model_name="kmeans", trigger_reason=trigger_reason).inc()
+            
             if len(Xs) >= 20:
                 self.lof.fit(Xs)
+                MODEL_RETRAIN_COUNT.labels(model_name="lof", trigger_reason=trigger_reason).inc()
+                
             self.svm.fit(Xs)
+            MODEL_RETRAIN_COUNT.labels(model_name="svm", trigger_reason=trigger_reason).inc()
+            
             self.is_trained = True
-            MODEL_ACCURACY.set(0.0)  # placeholder, not supervised
+            MODEL_ACCURACY.labels(model_name="ensemble").set(0.0)  # placeholder, not supervised
+            
+        # Record training duration
+        duration = time.time() - start_time
+        MODEL_RETRAIN_DURATION.labels(model_name="ensemble").observe(duration)
+        
         self.save_models()
 
     def save_models(self) -> None:

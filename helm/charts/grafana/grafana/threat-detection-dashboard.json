@@ -1,0 +1,168 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "eBPF + AI Threat Detection Dashboard",
+    "tags": ["ebpf", "ai", "security", "threats"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🚨 Real-time Threat Detection",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(ml_detector_threats_total[1m])) * 60",
+            "legendFormat": "Threats per minute"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "🔍 Threat Types Distribution",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum by (threat_type) (increase(ml_detector_threats_total[1h]))",
+            "legendFormat": "{{ threat_type }}"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "📊 Threat Confidence Levels",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum by (confidence_level) (rate(ml_detector_threats_total[1m]))",
+            "legendFormat": "{{ confidence_level }} confidence"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "🔥 Port Scan Activity",
+        "type": "timeseries", 
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum by (severity) (rate(ml_detector_port_scan_total[1m]))",
+            "legendFormat": "{{ severity }} severity"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "💥 DDoS Attacks",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "sum by (attack_type) (rate(ml_detector_ddos_total[1m]))",
+            "legendFormat": "{{ attack_type }}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "🌐 Network Traffic Patterns",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "ebpf_packets_per_second",
+            "legendFormat": "Packets/sec"
+          },
+          {
+            "expr": "ebpf_bytes_per_second / 1024 / 1024",
+            "legendFormat": "MB/sec"
+          },
+          {
+            "expr": "ebpf_unique_ips",
+            "legendFormat": "Unique IPs"
+          },
+          {
+            "expr": "ebpf_unique_ports",
+            "legendFormat": "Unique Ports"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "🤖 ML Model Performance",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "ml_detector_model_accuracy",
+            "legendFormat": "{{ model_name }} accuracy"
+          },
+          {
+            "expr": "rate(ml_detector_model_retrain_total[5m])",
+            "legendFormat": "Retraining rate"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "⚡ Threat Severity Heatmap",
+        "type": "heatmap",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+        "targets": [
+          {
+            "expr": "ml_detector_threat_confidence",
+            "legendFormat": "{{ threat_type }}"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "📈 Feature Analysis",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+        "targets": [
+          {
+            "expr": "ml_detector_feature_values{feature_name=\"packets_per_second\"}",
+            "legendFormat": "Packets/sec"
+          },
+          {
+            "expr": "ml_detector_feature_values{feature_name=\"unique_ips\"}",
+            "legendFormat": "Unique IPs"
+          },
+          {
+            "expr": "ml_detector_feature_values{feature_name=\"unique_ports\"}",
+            "legendFormat": "Unique Ports"
+          }
+        ]
+      }
+    ],
+    "version": 1
+  }
+}

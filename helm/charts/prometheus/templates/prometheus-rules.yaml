@@ -11,11 +11,58 @@ metadata:
     app.kubernetes.io/part-of: ebpf-ai
 spec:
   groups:
-  - name: ebpf-ai.rules
+  - name: ebpf-ai.threat-detection
     rules:
-    # ML Detector Alerts
+    # Critical threat alerts
+    - alert: CriticalThreatDetected
+      expr: increase(ml_detector_threats_total{confidence_level="high"}[1m]) > 0
+      for: 0s
+      labels:
+        severity: critical
+        component: ml-detector
+        alert_type: security_threat
+      annotations:
+        summary: "🚨 Critical threat detected"
+        description: "High confidence threat detected: {{ $labels.threat_type }} from {{ $labels.source_ip }}"
+        
+    - alert: PortScanDetected
+      expr: increase(ml_detector_port_scan_total[2m]) > 0
+      for: 0s
+      labels:
+        severity: warning
+        component: ml-detector
+        alert_type: port_scan
+      annotations:
+        summary: "🔍 Port scanning activity detected"
+        description: "Port scan detected with severity: {{ $labels.severity }}"
+        
+    - alert: DDoSAttackDetected
+      expr: increase(ml_detector_ddos_total[1m]) > 0
+      for: 0s
+      labels:
+        severity: critical
+        component: ml-detector
+        alert_type: ddos
+      annotations:
+        summary: "💥 DDoS attack detected"
+        description: "DDoS attack detected: {{ $labels.attack_type }}"
+        
+    - alert: DataExfiltrationDetected
+      expr: increase(ml_detector_data_exfiltration_total[5m]) > 0
+      for: 0s
+      labels:
+        severity: critical
+        component: ml-detector
+        alert_type: data_exfiltration
+      annotations:
+        summary: "📤 Data exfiltration detected"
+        description: "Potential data exfiltration: {{ $labels.direction }} direction"
+
+  - name: ebpf-ai.system-health
+    rules:
+    # System health alerts
     - alert: MLDetectorHighAnomalyRate
-      expr: rate(anomalies_detected_total[5m]) > 10
+      expr: rate(ml_detector_anomaly_total[5m]) > 10
       for: 2m
       labels:
         severity: warning
