@@ -381,15 +381,16 @@ func (app *Application) startHTTPServer() error {
 
 // startMLClient sends data to ML Detector
 func (app *Application) startMLClient() {
-	ticker := time.NewTicker(app.config.PostInterval)
-	defer ticker.Stop()
-
 	log.Printf("🤖 ML client starting -> %s (every %v)", app.config.MLDetectorURL, app.config.PostInterval)
 
 	go func() {
+		ticker := time.NewTicker(app.config.PostInterval)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-app.ctx.Done():
+				log.Printf("🛑 ML client stopping...")
 				return
 			case <-ticker.C:
 				stats := app.getStats()
