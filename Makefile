@@ -77,7 +77,7 @@ port-forward: ## Setup port forwarding for local access
 	@echo "Starting port forwards (press Ctrl+C to stop)..."
 	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
 	@kubectl port-forward svc/grafana -n grafana 3000:3000 &
-	@kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+	@kubectl port-forward svc/prometheus-server -n prometheus 9090:80 &
 	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
 	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
 	@kubectl port-forward svc/tekton-dashboard -n tekton 9097:9097 &
