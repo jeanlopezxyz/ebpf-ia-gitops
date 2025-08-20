@@ -35,7 +35,8 @@ RUN useradd --create-home --shell /bin/bash detector
 RUN mkdir -p /app/models /tmp/models /tmp/prometheus && \
     chown -R detector:detector /app && \
     chown -R detector:detector /tmp/models && \
-    chown -R detector:detector /tmp/prometheus
+    chown -R detector:detector /tmp/prometheus && \
+    chmod -R 775 /app/models
 
 # Set environment variable for model path  
 ENV MODEL_PATH=/app/models
