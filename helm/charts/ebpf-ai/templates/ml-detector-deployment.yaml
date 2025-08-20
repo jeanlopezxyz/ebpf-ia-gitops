@@ -36,7 +36,14 @@ spec:
       initContainers:
       - name: fix-permissions
         image: alpine:latest
-        command: ['sh', '-c', 'chown -R 1000:1000 /app/models && chmod -R 755 /app/models']
+        command: 
+        - sh
+        - -c
+        - |
+          echo "Fixing /app/models permissions..."
+          chown -R 1000:1000 /app/models
+          chmod -R 755 /app/models
+          echo "Permissions fixed successfully"
         volumeMounts:
         - name: model-storage
           mountPath: /app/models
