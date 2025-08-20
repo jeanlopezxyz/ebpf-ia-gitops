@@ -30,12 +30,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash detector && \
+    mkdir -p /app/models && \
     chown -R detector:detector /app && \
+    mkdir -p /tmp/models && \
     chown -R detector:detector /tmp/models && \
     mkdir -p /tmp/prometheus && chown -R detector:detector /tmp/prometheus
 
-# Set environment variable for model path
-ENV MODEL_PATH=/tmp/models
+# Set environment variable for model path  
+ENV MODEL_PATH=/app/models
 
 USER detector
 
