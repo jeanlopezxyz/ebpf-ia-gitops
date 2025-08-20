@@ -38,6 +38,10 @@ spec:
       - name: {{ .Values.mlDetector.name }}
         image: "{{ .Values.global.registry }}/{{ .Values.mlDetector.image.repository }}:{{ .Values.mlDetector.image.tag | default .Values.global.imageTag }}"
         imagePullPolicy: {{ .Values.mlDetector.image.pullPolicy }}
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
         ports:
         - name: http
           containerPort: {{ .Values.mlDetector.service.targetPort }}
