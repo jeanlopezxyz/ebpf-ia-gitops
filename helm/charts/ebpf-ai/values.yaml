@@ -35,7 +35,7 @@ mlDetector:
       
   env:
     - name: MODEL_PATH
-      value: "/app/models"
+      value: "/tmp/models"  # Use temp directory with write permissions
     - name: TRAINING_ENABLED
       value: "true"  # Enable model re-training
     - name: BASELINE_ENABLED
