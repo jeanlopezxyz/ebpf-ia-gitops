@@ -23,7 +23,7 @@ spec:
           value: "256Mi"
   destination:
     server: https://kubernetes.default.svc
-    namespace: tekton-pipelines
+    namespace: tekton
   syncPolicy:
     automated:
       prune: true
