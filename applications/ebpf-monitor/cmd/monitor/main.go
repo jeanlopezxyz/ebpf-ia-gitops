@@ -441,14 +441,7 @@ func (app *Application) sendToMLDetector(features map[string]interface{}) error 
 		return fmt.Errorf("ML detector status: %d", resp.StatusCode)
 	}
 
-	// Process response
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
-		if threat, ok := result["threat_detected"].(bool); ok && threat {
-			log.Printf("🚨 THREAT DETECTED: %v", result)
-		}
-	}
-
+	// eBPF Monitor only sends data - ML Detector handles threat detection
 	return nil
 }
 
