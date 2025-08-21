@@ -69,7 +69,7 @@ rules:
     resources: ["events","namespaces","pods","pods/log"]
     verbs: ["get","list","watch"]
   - apiGroups: ["tekton.dev"]
-    resources: ["clustertasks","conditions","pipelines","pipelineruns","pipelineresources","runs","tasks","taskruns"]
+    resources: ["clustertasks","conditions","pipelines","pipelineruns","pipelineresources","runs","tasks","taskruns","stepactions","customruns","verificationpolicies"]
     verbs: ["get","list","watch"]
   - apiGroups: ["triggers.tekton.dev"]
     resources: ["clustertriggerbindings","eventlisteners","interceptors","triggers","triggerbindings","triggertemplates"]
@@ -89,6 +89,22 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: tekton-dashboard-backend-view
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "tekton-dashboard.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-dashboard-tenant-view
+  labels:
+{{ include "tekton-dashboard.labels" . | indent 4 }}
+    rbac.dashboard.tekton.dev/subject: tekton-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-dashboard-tenant-view
 subjects:
   - kind: ServiceAccount
     name: {{ include "tekton-dashboard.serviceAccountName" . }}
