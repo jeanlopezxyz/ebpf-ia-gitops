@@ -23,7 +23,7 @@ spec:
         alert_type: security_threat
       annotations:
         summary: "🚨 Critical threat detected"
-        description: "High confidence threat detected: {{ $labels.threat_type }} from {{ $labels.source_ip }}"
+        description: "High confidence threat detected: {{`{{ $labels.threat_type }}`}} from {{`{{ $labels.source_ip }}`}}"
         
     - alert: PortScanDetected
       expr: increase(ml_detector_port_scan_total[2m]) > 0
@@ -34,7 +34,7 @@ spec:
         alert_type: port_scan
       annotations:
         summary: "🔍 Port scanning activity detected"
-        description: "Port scan detected with severity: {{ $labels.severity }}"
+        description: "Port scan detected with severity: {{`{{ $labels.severity }}`}}"
         
     - alert: DDoSAttackDetected
       expr: increase(ml_detector_ddos_total[1m]) > 0
@@ -45,7 +45,7 @@ spec:
         alert_type: ddos
       annotations:
         summary: "💥 DDoS attack detected"
-        description: "DDoS attack detected: {{ $labels.attack_type }}"
+        description: "DDoS attack detected: {{`{{ $labels.attack_type }}`}}"
         
     - alert: DataExfiltrationDetected
       expr: increase(ml_detector_data_exfiltration_total[5m]) > 0
@@ -56,7 +56,7 @@ spec:
         alert_type: data_exfiltration
       annotations:
         summary: "📤 Data exfiltration detected"
-        description: "Potential data exfiltration: {{ $labels.direction }} direction"
+        description: "Potential data exfiltration: {{`{{ $labels.direction }}`}} direction"
 
   - name: ebpf-ai.system-health
     rules:
