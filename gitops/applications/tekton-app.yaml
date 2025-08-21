@@ -22,6 +22,10 @@ spec:
         - name: controller.resources.requests.memory
           value: "256Mi"
         - name: createNamespace
+          value: "true"
+        - name: namespace.podSecurityEnforce
+          value: "privileged"
+        - name: set-security-context
           value: "false"
   destination:
     server: https://kubernetes.default.svc
