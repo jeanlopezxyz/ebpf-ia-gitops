@@ -61,8 +61,8 @@ spec:
       image: alpine/git:v2.40.1
       workingDir: $(workspaces.output.path)
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
+        runAsUser: 65532
+        runAsGroup: 65532
         runAsNonRoot: true
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: false
