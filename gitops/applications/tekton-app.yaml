@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tekton
+  name: tekton-pipelines
   namespace: argocd
   labels:
-    app.kubernetes.io/name: tekton
+    app.kubernetes.io/name: tekton-pipelines
     app.kubernetes.io/part-of: ebpf-ai-platform
     app.kubernetes.io/component: tekton-core
   finalizers:
