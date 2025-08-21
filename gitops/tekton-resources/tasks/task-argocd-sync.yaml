@@ -1,7 +1,10 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
+  name: argocd-sync
   namespace: tekton
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
   labels:
     app.kubernetes.io/name: tekton-ci
     app.kubernetes.io/instance: tekton-ci
