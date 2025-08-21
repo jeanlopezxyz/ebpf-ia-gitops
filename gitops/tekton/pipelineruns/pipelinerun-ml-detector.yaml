@@ -1,0 +1,47 @@
+# pipelineRuns enabled by default
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: ml-detector-build-20250821
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: pipelinerun-ml-detector
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  pipelineRef:
+    name: ml-detector-ci
+  taskRunTemplate:
+    serviceAccountName: pipeline-sa
+    podTemplate:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  params:
+    - name: git-url
+      value: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      value: main
+    - name: image-registry
+      value: registry.container-registry.svc.cluster.local:5000
+    - name: image-name
+      value: ml-detector
+    - name: dockerfile-path
+      value: ./applications/ml-detector/Dockerfile
+    - name: context-path
+      value: ./applications/ml-detector
+
