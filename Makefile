@@ -80,7 +80,7 @@ port-forward: ## Setup port forwarding for local access
 	@kubectl port-forward svc/prometheus-server -n prometheus 9090:80 &
 	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
 	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
-	@kubectl port-forward svc/tekton-dashboard -n tekton 9097:9097 &
+	@kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9097:9097 &
 	@kubectl port-forward svc/registry -n container-registry 5001:5000 &
 	@wait
 

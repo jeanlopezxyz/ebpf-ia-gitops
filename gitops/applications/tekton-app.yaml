@@ -21,14 +21,9 @@ spec:
           value: "100m"
         - name: controller.resources.requests.memory
           value: "256Mi"
-        - name: controller.config.default-service-account
-          value: "default"
-      values: |
-        namespace: tekton
-        fullnameOverride: tekton-pipelines
   destination:
     server: https://kubernetes.default.svc
-    namespace: tekton
+    namespace: tekton-pipelines
   syncPolicy:
     automated:
       prune: true
