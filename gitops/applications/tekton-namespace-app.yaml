@@ -1,28 +1,22 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tekton-pipelines
+  name: tekton-namespace
   namespace: argocd
   labels:
-    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/name: tekton-namespace
     app.kubernetes.io/part-of: ebpf-ai-platform
-    app.kubernetes.io/component: tekton-core
+    app.kubernetes.io/component: tekton-namespace
   finalizers:
     - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"  # Deploy before other Tekton apps
 spec:
   project: default
   source:
-    repoURL: https://cdfoundation.github.io/tekton-helm-chart
-    chart: tekton-pipeline
-    targetRevision: 1.2.0
-    helm:
-      parameters:
-        - name: controller.resources.requests.cpu
-          value: "100m"
-        - name: controller.resources.requests.memory
-          value: "256Mi"
-        - name: createNamespace
-          value: "false"
+    repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    targetRevision: main
+    path: gitops/tekton-namespace
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton-pipelines
@@ -32,6 +26,7 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
+      - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
     retry:
