@@ -1,6 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
+  name: helm-charts-ci
   namespace: ebpf-security
   labels:
     app.kubernetes.io/name: tekton-ci
