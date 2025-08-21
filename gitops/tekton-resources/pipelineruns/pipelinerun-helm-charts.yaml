@@ -4,7 +4,8 @@ kind: PipelineRun
 metadata:
   name: helm-charts-dependency-update
   namespace: tekton
-  labels:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  labels:
     app.kubernetes.io/name: tekton-ci
     app.kubernetes.io/instance: tekton-ci
     app.kubernetes.io/component: pipelinerun-helm-charts
