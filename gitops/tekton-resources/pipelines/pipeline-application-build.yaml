@@ -40,7 +40,7 @@ spec:
   tasks:
     - name: fetch-source
       taskRef:
-        name: git-clone
+        name: git-clone-secure
       workspaces:
         - name: output
           workspace: shared-data

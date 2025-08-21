@@ -1,0 +1,172 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone-secure
+  namespace: ebpf-security
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: task-git-clone-secure
+    app.kubernetes.io/part-of: ebpf-ai-system
+  annotations:
+    tekton.dev/displayName: "Git Clone (Secure Non-Root)"
+    tekton.dev/categories: "Git"
+    tekton.dev/tags: "git,clone,security"
+spec:
+  description: >-
+    Clone a git repository into a workspace with enhanced security.
+    Runs as non-root user with minimal privileges.
+  
+  params:
+    - name: url
+      description: Repository URL to clone from.
+      type: string
+    - name: revision
+      description: Revision to checkout (branch, tag, sha, ref, etc.)
+      type: string
+      default: "main"
+    - name: depth
+      description: Perform a shallow clone, fetching only the most recent N commits.
+      type: string
+      default: "1"
+    - name: sslVerify
+      description: Set the `http.sslVerify` global git config
+      type: string
+      default: "true"
+    - name: subdirectory
+      description: Subdirectory inside the `output` Workspace to clone the repo into.
+      type: string
+      default: ""
+
+  results:
+    - name: commit
+      description: The precise commit SHA that was fetched by this Task.
+    - name: url
+      description: The precise URL that was fetched by this Task.
+
+  workspaces:
+    - name: output
+      description: The git repo will be cloned into this Workspace.
+    - name: ssh-directory
+      optional: true
+      description: |
+        A .ssh directory with private key, known_hosts, config, etc. 
+    - name: basic-auth
+      optional: true
+      description: |
+        A Workspace containing a .gitconfig and .git-credentials file.
+
+  steps:
+    - name: clone
+      image: alpine/git:v2.40.1
+      workingDir: $(workspaces.output.path)
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop:
+            - ALL
+      env:
+        - name: HOME
+          value: /tmp
+        - name: PARAM_URL
+          value: $(params.url)
+        - name: PARAM_REVISION
+          value: $(params.revision)
+        - name: PARAM_DEPTH
+          value: $(params.depth)
+        - name: PARAM_SSL_VERIFY
+          value: $(params.sslVerify)
+        - name: PARAM_SUBDIRECTORY
+          value: $(params.subdirectory)
+        - name: WORKSPACE_OUTPUT_PATH
+          value: $(workspaces.output.path)
+        - name: WORKSPACE_SSH_DIRECTORY_BOUND
+          value: $(workspaces.ssh-directory.bound)
+        - name: WORKSPACE_SSH_DIRECTORY_PATH
+          value: $(workspaces.ssh-directory.path)
+        - name: WORKSPACE_BASIC_AUTH_DIRECTORY_BOUND
+          value: $(workspaces.basic-auth.bound)
+        - name: WORKSPACE_BASIC_AUTH_DIRECTORY_PATH
+          value: $(workspaces.basic-auth.path)
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+
+        echo "🔐 Starting secure git clone as non-root user"
+        whoami
+        id
+
+        # Setup git configuration securely
+        export GIT_CONFIG_GLOBAL=/tmp/.gitconfig
+        
+        # Configure git with secure defaults
+        git config --global --add safe.directory '*'
+        git config --global user.email "tekton@pipeline.local"  
+        git config --global user.name "Tekton Pipeline"
+        git config --global http.sslVerify "${PARAM_SSL_VERIFY}"
+        
+        # Setup authentication if provided
+        if [ "${WORKSPACE_BASIC_AUTH_DIRECTORY_BOUND}" = "true" ] ; then
+          if [ -f "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.gitconfig" ]; then
+            echo "📋 Using provided .gitconfig"
+            cp "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.gitconfig" "${GIT_CONFIG_GLOBAL}"
+          fi
+          if [ -f "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.git-credentials" ]; then
+            echo "🔑 Using provided .git-credentials"
+            cp "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.git-credentials" /tmp/.git-credentials
+            git config --global credential.helper store
+          fi
+        fi
+
+        if [ "${WORKSPACE_SSH_DIRECTORY_BOUND}" = "true" ] ; then
+          echo "🔐 Setting up SSH authentication"
+          cp -R "${WORKSPACE_SSH_DIRECTORY_PATH}" /tmp/.ssh
+          chmod 700 /tmp/.ssh
+          chmod -R 600 /tmp/.ssh/*
+        fi
+
+        # Determine clone destination
+        CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}/${PARAM_SUBDIRECTORY}"
+        
+        # Clean checkout directory
+        rm -rf "${CHECKOUT_DIR}"
+        mkdir -p "${CHECKOUT_DIR}"
+        
+        # Clone repository with depth limit for security
+        echo "📡 Cloning ${PARAM_URL} (revision: ${PARAM_REVISION}, depth: ${PARAM_DEPTH})"
+        
+        if [ "${PARAM_DEPTH}" != "0" ]; then
+          git clone --depth="${PARAM_DEPTH}" --no-single-branch "${PARAM_URL}" "${CHECKOUT_DIR}"
+        else
+          git clone "${PARAM_URL}" "${CHECKOUT_DIR}"
+        fi
+        
+        cd "${CHECKOUT_DIR}"
+        
+        # Checkout specific revision if not default
+        RESULT_SHA="$(git rev-parse HEAD)"
+        if [ "${PARAM_REVISION}" != "main" ] && [ "${PARAM_REVISION}" != "master" ]; then
+          echo "🔄 Checking out revision: ${PARAM_REVISION}"
+          git fetch origin "${PARAM_REVISION}"
+          git checkout FETCH_HEAD
+          RESULT_SHA="$(git rev-parse HEAD)"
+        fi
+        
+        # Output results
+        printf "%s" "${RESULT_SHA}" | tee "$(results.commit.path)"
+        printf "%s" "${PARAM_URL}" | tee "$(results.url.path)"
+        
+        echo "✅ Successfully cloned repository"
+        echo "📊 Repository info:"
+        echo "   📁 Path: ${CHECKOUT_DIR}"
+        echo "   🔗 URL: ${PARAM_URL}"
+        echo "   🏷️  Revision: ${PARAM_REVISION}"
+        echo "   📝 SHA: ${RESULT_SHA}"
+        
+        # List contents for verification
+        echo "📂 Repository contents:"
+        ls -la "${CHECKOUT_DIR}"
