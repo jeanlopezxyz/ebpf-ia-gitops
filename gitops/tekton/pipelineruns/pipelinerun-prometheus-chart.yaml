@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: prometheus-chart-update-
+  name: prometheus-chart-update-
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/name: tekton-ci
