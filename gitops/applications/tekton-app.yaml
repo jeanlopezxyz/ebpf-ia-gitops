@@ -21,6 +21,8 @@ spec:
           value: "100m"
         - name: controller.resources.requests.memory
           value: "256Mi"
+        - name: createNamespace
+          value: "false"
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton-pipelines
