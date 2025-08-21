@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: ml-detector-build
+  generateName: ml-detector-build-
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/name: tekton-ci

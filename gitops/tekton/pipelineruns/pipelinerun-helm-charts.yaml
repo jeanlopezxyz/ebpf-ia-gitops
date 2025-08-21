@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: helm-charts-dependency-update
+  generateName: helm-charts-dependency-update-
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/name: tekton-ci

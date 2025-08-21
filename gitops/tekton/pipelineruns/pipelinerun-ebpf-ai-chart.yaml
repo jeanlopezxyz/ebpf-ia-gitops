@@ -1,8 +1,9 @@
-# pipelineRuns enabled by default
+# PipelineRun template - not auto-executed to avoid race conditions
+# To execute: kubectl create -f this-file or use Tekton Dashboard
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: ebpf-ai-chart-update
+  generateName: ebpf-ai-chart-update-
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/name: tekton-ci
