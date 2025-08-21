@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: helm-dependency-update
-  namespace: tekton-pipelines
+  namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci
     app.kubernetes.io/instance: tekton-ci

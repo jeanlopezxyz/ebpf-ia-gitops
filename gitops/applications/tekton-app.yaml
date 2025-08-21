@@ -21,15 +21,17 @@ spec:
           value: "100m"
         - name: controller.resources.requests.memory
           value: "256Mi"
-        - name: createNamespace
+        - name: namespace.name
+          value: "tekton"
+        - name: namespace.create
           value: "true"
-        - name: pod-security.kubernetes.io/enforce
+        - name: namespace.labels.pod-security\.kubernetes\.io/enforce
           value: "privileged"
-        - name: set-security-context
-          value: "false"
+        - name: namespace.labels.app\.kubernetes\.io/part-of
+          value: "tekton-pipelines"
   destination:
     server: https://kubernetes.default.svc
-    namespace: tekton-pipelines
+    namespace: tekton
   syncPolicy:
     automated:
       prune: true
