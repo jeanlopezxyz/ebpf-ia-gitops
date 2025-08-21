@@ -21,7 +21,7 @@ spec:
       default: main
     - name: image-registry
       description: Container registry URL
-      default: registry.container-registry.svc.cluster.local:5000
+      default: registry.kube-system.svc.cluster.local:80
     - name: image-name
       description: Image name (e.g., ebpf-monitor, ml-detector)
       type: string

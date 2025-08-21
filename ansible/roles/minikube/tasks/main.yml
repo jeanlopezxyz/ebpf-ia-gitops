@@ -39,6 +39,7 @@
   loop:
     - metrics-server
     - dashboard
+    - registry
   ignore_errors: yes
   
 - name: Display cluster information
