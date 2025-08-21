@@ -23,7 +23,7 @@ spec:
           value: "256Mi"
         - name: createNamespace
           value: "true"
-        - name: namespace.podSecurityEnforce
+        - name: pod-security.kubernetes.io/enforce
           value: "privileged"
         - name: set-security-context
           value: "false"
