@@ -127,11 +127,17 @@ spec:
         fi
 
         # Determine clone destination
-        CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}/${PARAM_SUBDIRECTORY}"
-        
-        # Clean checkout directory
-        rm -rf "${CHECKOUT_DIR}"
-        mkdir -p "${CHECKOUT_DIR}"
+        if [ -n "${PARAM_SUBDIRECTORY}" ]; then
+          CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}/${PARAM_SUBDIRECTORY}"
+          # Clean and create subdirectory
+          rm -rf "${CHECKOUT_DIR}"
+          mkdir -p "${CHECKOUT_DIR}"
+        else
+          CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}"
+          # Clean existing contents but don't remove mounted directory
+          rm -rf "${CHECKOUT_DIR}"/*
+          rm -rf "${CHECKOUT_DIR}"/.[!.]* 2>/dev/null || true
+        fi
         
         # Clone repository with depth limit for security
         echo "📡 Cloning ${PARAM_URL} (revision: ${PARAM_REVISION}, depth: ${PARAM_DEPTH})"
