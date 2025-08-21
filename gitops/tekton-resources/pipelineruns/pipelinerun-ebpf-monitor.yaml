@@ -6,6 +6,7 @@ metadata:
   namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+    pipeline.tekton.dev/affinity-assistant: "disabled"
   labels:
     app.kubernetes.io/name: tekton-ci
     app.kubernetes.io/instance: tekton-ci
