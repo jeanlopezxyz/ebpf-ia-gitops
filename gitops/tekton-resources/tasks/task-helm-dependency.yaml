@@ -1,7 +1,8 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: helm-dependency-update
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  name: helm-dependency-update
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci

@@ -2,7 +2,8 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: grafana-chart-update
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  name: grafana-chart-update
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci

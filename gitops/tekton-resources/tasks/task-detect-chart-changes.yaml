@@ -1,7 +1,8 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: detect-chart-changes
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  name: detect-chart-changes
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci

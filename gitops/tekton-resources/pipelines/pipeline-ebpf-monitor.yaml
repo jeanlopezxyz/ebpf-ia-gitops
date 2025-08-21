@@ -1,7 +1,8 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: ebpf-monitor-ci
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  name: ebpf-monitor-ci
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci

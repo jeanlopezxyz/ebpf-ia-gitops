@@ -1,7 +1,8 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: ml-detector-ci
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  name: ml-detector-ci
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci

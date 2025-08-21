@@ -3,7 +3,8 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: ebpf-ai-chart-update
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  name: ebpf-ai-chart-update
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci

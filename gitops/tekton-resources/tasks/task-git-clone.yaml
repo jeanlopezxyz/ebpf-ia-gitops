@@ -1,7 +1,8 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: git-clone
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  name: git-clone
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci

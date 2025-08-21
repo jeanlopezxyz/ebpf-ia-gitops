@@ -1,7 +1,8 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: helm-charts-ci
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  name: helm-charts-ci
   namespace: tekton
   labels:
     app.kubernetes.io/name: tekton-ci
