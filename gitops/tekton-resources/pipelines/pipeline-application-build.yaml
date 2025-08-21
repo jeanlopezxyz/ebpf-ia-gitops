@@ -50,29 +50,17 @@ spec:
         - name: revision
           value: $(params.git-revision)
 
-    - name: generate-build-id
+    - name: build-image
       taskRef:
-        name: generate-tag
+        name: buildah
       runAfter:
         - fetch-source
       workspaces:
         - name: source
           workspace: shared-data
       params:
-        - name: base-version
-          value: "3.0"
-
-    - name: build-image
-      taskRef:
-        name: buildah
-      runAfter:
-        - generate-build-id
-      workspaces:
-        - name: source
-          workspace: shared-data
-      params:
         - name: IMAGE
-          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-build-id.results.image-tag)
+          value: $(params.image-registry)/$(params.image-name):latest
         - name: DOCKERFILE
           value: $(params.dockerfile-path)
         - name: CONTEXT
