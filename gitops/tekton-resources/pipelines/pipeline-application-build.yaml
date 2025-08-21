@@ -72,7 +72,7 @@ spec:
           workspace: shared-data
       params:
         - name: IMAGE
-          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-build-id.results.build-tag)
+          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-build-id.results.image-tag)
         - name: DOCKERFILE
           value: $(params.dockerfile-path)
         - name: CONTEXT
