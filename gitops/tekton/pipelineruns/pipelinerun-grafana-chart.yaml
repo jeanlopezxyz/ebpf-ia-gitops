@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: grafana-chart-update-
+  name: grafana-chart-update
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/name: tekton-ci
