@@ -1,17 +1,17 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: ebpf-monitor-ci
+  name: application-build-ci
   namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "0"
   labels:
     app.kubernetes.io/name: tekton-ci
     app.kubernetes.io/instance: tekton-ci
-    app.kubernetes.io/component: pipeline-ebpf-monitor
+    app.kubernetes.io/component: pipeline-application-build
     app.kubernetes.io/part-of: ebpf-ai-system
 spec:
-  description: CI pipeline for eBPF Monitor application
+  description: Generic CI pipeline for building any application with Docker/Buildah
   params:
     - name: git-url
       description: Git repository URL
@@ -23,14 +23,20 @@ spec:
       description: Container registry URL
       default: registry.container-registry.svc.cluster.local:5000
     - name: image-name
-      description: Image name
-      default: ebpf-monitor
+      description: Image name (e.g., ebpf-monitor, ml-detector)
+      type: string
+    - name: dockerfile-path
+      description: Path to Dockerfile relative to repository root
+      type: string
+    - name: context-path
+      description: Build context path relative to repository root
+      type: string
     - name: argo-app-name
-      description: Argo CD application name
+      description: Argo CD application name to sync after build
       default: ebpf-ai
   workspaces:
     - name: shared-data
-      description: Shared workspace for source code
+      description: Shared workspace for source code and artifacts
   tasks:
     - name: fetch-source
       taskRef:
@@ -43,52 +49,48 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.git-revision)
-    - name: update-helm-dependencies
+
+    - name: generate-build-id
       taskRef:
-        name: helm-dependency-update
+        name: generate-tag
       runAfter:
         - fetch-source
       workspaces:
         - name: source
           workspace: shared-data
-    - name: generate-tag
-      taskRef:
-        name: generate-tag
-      runAfter:
-        - update-helm-dependencies
-      workspaces:
-        - name: source
-          workspace: shared-data
+      params:
+        - name: base-version
+          value: "3.0"
+
     - name: build-image
       taskRef:
         name: buildah
       runAfter:
-        - generate-tag
+        - generate-build-id
       workspaces:
         - name: source
           workspace: shared-data
       params:
         - name: IMAGE
-          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-tag.results.image-tag)
+          value: $(params.image-registry)/$(params.image-name):$(tasks.generate-build-id.results.build-tag)
         - name: DOCKERFILE
-          value: ./applications/ebpf-monitor/Dockerfile
+          value: $(params.dockerfile-path)
         - name: CONTEXT
-          value: ./applications/ebpf-monitor
-        - name: TLSVERIFY
-          value: "false"
-    - name: sync-deploy
+          value: $(params.context-path)
+        - name: FORMAT
+          value: docker
+        - name: BUILD_EXTRA_ARGS
+          value: "--label=git.commit=$(params.git-revision) --label=build.date=$(date -u +'%Y-%m-%dT%H:%M:%SZ') --label=image.name=$(params.image-name)"
+
+    - name: sync-deployment
       taskRef:
         name: argocd-sync
       runAfter:
         - build-image
       params:
-        - name: app-name
+        - name: application-name
           value: $(params.argo-app-name)
-        - name: set-params
-          value: >-
-            -p global.registry=$(params.image-registry)
-            -p ebpfMonitor.image.tag=$(tasks.generate-tag.results.image-tag)
-        - name: force-sync
-          value: "true"
-        - name: wait-health
-          value: "false"
+        - name: revision
+          value: $(params.git-revision)
+        - name: flags
+          value: --insecure
