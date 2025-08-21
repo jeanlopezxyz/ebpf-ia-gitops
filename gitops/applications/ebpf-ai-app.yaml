@@ -27,10 +27,14 @@ spec:
           value: "latest"
         - name: mlDetector.replicaCount
           value: "1"
+        - name: mlDetector.image.repository
+          value: "python"
         - name: mlDetector.image.tag
-          value: "latest"
+          value: "3.11-slim"
+        - name: ebpfMonitor.image.repository  
+          value: "nginx"
         - name: ebpfMonitor.image.tag
-          value: "latest"
+          value: "alpine"
         - name: autoscaling.enabled
           value: "true"
         - name: redis.enabled
