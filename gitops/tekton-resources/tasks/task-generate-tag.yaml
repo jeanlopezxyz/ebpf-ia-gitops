@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: generate-tag
-  namespace: tekton
+  namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "0"
   labels:

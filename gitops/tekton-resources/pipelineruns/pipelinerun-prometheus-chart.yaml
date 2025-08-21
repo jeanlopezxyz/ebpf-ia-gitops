@@ -3,7 +3,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: prometheus-chart-update
-  namespace: tekton
+  namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "1"
   labels:

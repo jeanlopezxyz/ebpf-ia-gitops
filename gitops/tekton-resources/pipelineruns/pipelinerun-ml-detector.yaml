@@ -3,7 +3,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: ml-detector-build-20250821
-  namespace: tekton
+  namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "1"
   labels:

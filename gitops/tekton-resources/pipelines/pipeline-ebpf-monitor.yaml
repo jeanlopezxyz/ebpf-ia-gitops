@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: ebpf-monitor-ci
-  namespace: tekton
+  namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "0"
   labels:
