@@ -32,8 +32,10 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
+      - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
+      - NamespaceMetadata={"labels":{"pod-security.kubernetes.io/enforce":"privileged"}}
     retry:
       limit: 5
       backoff:
