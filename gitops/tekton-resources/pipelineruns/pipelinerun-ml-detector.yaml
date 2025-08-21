@@ -19,9 +19,6 @@ spec:
     serviceAccountName: pipeline-sa
     podTemplate:
       securityContext:
-        runAsUser: 65532
-        runAsGroup: 65532
-        runAsNonRoot: true
         fsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
