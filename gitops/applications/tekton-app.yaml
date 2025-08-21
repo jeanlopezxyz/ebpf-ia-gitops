@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tekton-pipelines
+  name: tekton
   namespace: argocd
   labels:
-    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/name: tekton
     app.kubernetes.io/part-of: ebpf-ai-platform
     app.kubernetes.io/component: tekton-core
   finalizers:
@@ -28,7 +28,7 @@ spec:
         - name: namespace.labels.pod-security\.kubernetes\.io/enforce
           value: "privileged"
         - name: namespace.labels.app\.kubernetes\.io/part-of
-          value: "tekton-pipelines"
+          value: "tekton"
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton
