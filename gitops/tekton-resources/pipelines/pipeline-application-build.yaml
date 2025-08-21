@@ -88,9 +88,5 @@ spec:
       runAfter:
         - build-image
       params:
-        - name: application-name
+        - name: app-name
           value: $(params.argo-app-name)
-        - name: revision
-          value: $(params.git-revision)
-        - name: flags
-          value: --insecure
