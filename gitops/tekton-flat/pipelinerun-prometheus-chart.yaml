@@ -1,0 +1,32 @@
+# pipelineRuns enabled by default
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: prometheus-chart-update
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: pipelinerun-prometheus-chart
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  pipelineRef:
+    name: helm-charts-ci
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  params:
+    - name: git-url
+      value: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      value: main
+    - name: charts-path
+      value: helm/charts
+    - name: commit-message
+      value: "Update Prometheus chart dependencies and .tgz files"

@@ -1,0 +1,94 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: helm-charts-ci
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: pipeline-helm-charts
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  description: CI pipeline for Helm chart dependency management and ArgoCD sync
+  params:
+    - name: git-url
+      description: Git repository URL
+      default: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    - name: git-revision
+      description: Git revision to process
+      default: main
+    - name: charts-path
+      description: Path to Helm charts directory
+      default: helm/charts
+    - name: commit-message
+      description: Commit message for dependency updates
+      default: "Auto-update Helm chart dependencies"
+  workspaces:
+    - name: shared-data
+      description: Shared workspace for source code
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-data
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+    - name: detect-chart-changes
+      taskRef:
+        name: detect-chart-changes
+      runAfter:
+        - fetch-source
+      workspaces:
+        - name: source
+          workspace: shared-data
+      params:
+        - name: charts-path
+          value: $(params.charts-path)
+    - name: update-all-dependencies
+      taskRef:
+        name: helm-dependency-update
+      runAfter:
+        - detect-chart-changes
+      workspaces:
+        - name: source
+          workspace: shared-data
+      when:
+        - input: $(tasks.detect-chart-changes.results.changes-detected)
+          operator: in
+          values: ["true"]
+    - name: commit-dependencies
+      taskRef:
+        name: git-commit-push
+      runAfter:
+        - update-all-dependencies
+      workspaces:
+        - name: source
+          workspace: shared-data
+      params:
+        - name: commit-message
+          value: $(params.commit-message)
+        - name: files-pattern
+          value: "helm/charts/**/charts/*.tgz helm/charts/**/Chart.lock"
+      when:
+        - input: $(tasks.update-all-dependencies.results.dependencies-updated)
+          operator: in
+          values: ["true"]
+    - name: sync-argocd-apps
+      taskRef:
+        name: argocd-sync-all
+      runAfter:
+        - commit-dependencies
+      params:
+        - name: app-pattern
+          value: "prometheus,grafana,ebpf-ai"
+        - name: force-sync
+          value: "true"
+      when:
+        - input: $(tasks.commit-dependencies.results.commit-success)
+          operator: in
+          values: ["true"]

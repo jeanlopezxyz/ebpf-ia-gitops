@@ -1,0 +1,62 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: argocd-sync
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: task-argocd-sync
+    app.kubernetes.io/part-of: ebpf-ai-system
+    app.kubernetes.io/version: "0.2"
+spec:
+  description: Sync an Argo CD application
+  params:
+    - name: app-name
+      description: Name of the Argo CD application to sync
+    - name: argo-server
+      description: Argo CD server address
+      default: argocd-server.argocd.svc.cluster.local
+    - name: set-params
+      description: Optional space-separated helm -p key=value pairs for argocd app set
+      default: ""
+    - name: force-sync
+      description: Force sync even if no changes
+      default: "true"
+    - name: wait-health
+      description: Wait for app health after sync
+      default: "false"
+  steps:
+    - name: sync
+      image: quay.io/argoproj/argocd:v2.9.3
+      env:
+        - name: ARGOCD_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: argocd-env-secret
+              key: username
+              optional: true
+        - name: ARGOCD_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: argocd-env-secret
+              key: password
+              optional: true
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        if [ -z "${ARGOCD_USERNAME:-}" ] || [ -z "${ARGOCD_PASSWORD:-}" ]; then
+          echo "[argocd-sync] No credentials provided; skipping sync (auto-sync may apply)."
+          exit 0
+        fi
+        set -x
+        argocd login $(params.argo-server) --username "$ARGOCD_USERNAME" --password "$ARGOCD_PASSWORD" --insecure
+        if [ -n "$(params.set-params)" ]; then
+          argocd app set $(params.app-name) $(params.set-params) || echo "[argocd-sync] app set returned non-zero; continuing"
+        fi
+        SYNC_OPTS=""
+        [ "$(params.force-sync)" = "true" ] && SYNC_OPTS="--force"
+        argocd app sync $(params.app-name) $SYNC_OPTS || echo "[argocd-sync] app sync returned non-zero; continuing"
+        if [ "$(params.wait-health)" = "true" ]; then
+          argocd app wait $(params.app-name) --health || echo "[argocd-sync] app wait returned non-zero; continuing"
+        fi

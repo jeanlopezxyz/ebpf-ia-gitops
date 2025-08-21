@@ -1,0 +1,79 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: detect-chart-changes
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: task-detect-chart-changes
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  description: Detects changes in Helm Chart.yaml files that require dependency updates
+  workspaces:
+    - name: source
+      description: Repository source code
+  params:
+    - name: charts-path
+      description: Path to charts directory
+      default: helm/charts
+  results:
+    - name: changes-detected
+      description: Whether Chart.yaml changes were detected
+    - name: changed-charts
+      description: List of charts that changed
+  steps:
+    - name: detect-changes
+      image: alpine/git
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -eu
+        
+        echo "🔍 Detecting Helm chart changes..."
+        
+        CHARTS_PATH="$(params.charts-path)"
+        CHANGES="false"
+        CHANGED_CHARTS=""
+        
+        # Get list of changed files in last commit
+        CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD || echo "")
+        
+        echo "📝 Changed files:"
+        echo "$CHANGED_FILES"
+        
+        # Check for Chart.yaml changes
+        for chart_dir in $CHARTS_PATH/*/; do
+          if [ -d "$chart_dir" ]; then
+            chart_name=$(basename "$chart_dir")
+            chart_file="$CHARTS_PATH/$chart_name/Chart.yaml"
+            
+            if echo "$CHANGED_FILES" | grep -q "$chart_file"; then
+              echo "  ├── 📊 Chart.yaml changed: $chart_name"
+              CHANGES="true"
+              CHANGED_CHARTS="$CHANGED_CHARTS,$chart_name"
+            fi
+            
+            # Also check if Chart.lock is missing but Chart.yaml has dependencies
+            if [ -f "$chart_file" ] && grep -q "dependencies:" "$chart_file"; then
+              if [ ! -f "$CHARTS_PATH/$chart_name/Chart.lock" ]; then
+                echo "  ├── 🔧 Missing Chart.lock: $chart_name"
+                CHANGES="true"
+                CHANGED_CHARTS="$CHANGED_CHARTS,$chart_name"
+              fi
+            fi
+          fi
+        done
+        
+        # Clean up comma-separated list
+        CHANGED_CHARTS=$(echo "$CHANGED_CHARTS" | sed 's/^,//')
+        
+        # Output results
+        printf "%s" "$CHANGES" > $(results.changes-detected.path)
+        printf "%s" "$CHANGED_CHARTS" > $(results.changed-charts.path)
+        
+        if [ "$CHANGES" = "true" ]; then
+          echo "✅ Chart changes detected: $CHANGED_CHARTS"
+        else
+          echo "ℹ️  No Chart.yaml changes detected"
+        fi

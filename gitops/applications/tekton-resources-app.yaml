@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
     targetRevision: main
-    path: gitops/tekton
+    path: gitops/tekton-flat
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton-pipelines

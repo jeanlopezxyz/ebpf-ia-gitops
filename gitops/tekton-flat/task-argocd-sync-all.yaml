@@ -1,0 +1,95 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: argocd-sync-all
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-ci
+    app.kubernetes.io/instance: tekton-ci
+    app.kubernetes.io/component: task-argocd-sync-all
+    app.kubernetes.io/part-of: ebpf-ai-system
+spec:
+  description: Syncs multiple ArgoCD applications
+  params:
+    - name: app-pattern
+      description: Comma-separated list of application names to sync
+      default: "ebpf-ai"
+    - name: force-sync
+      description: Whether to force sync applications
+      default: "false"
+    - name: wait-health
+      description: Whether to wait for applications to be healthy
+      default: "false"
+  results:
+    - name: sync-success
+      description: Whether all syncs were successful
+  steps:
+    - name: sync-applications
+      image: alpine:latest
+      script: |
+        #!/bin/sh
+        set -eu
+        
+        echo "🔄 Syncing ArgoCD applications..."
+        
+        # Install kubectl
+        apk add --no-cache curl
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        mv kubectl /usr/local/bin/
+        
+        APPS="$(params.app-pattern)"
+        FORCE="$(params.force-sync)"
+        SUCCESS="true"
+        
+        # Convert comma-separated to array
+        IFS=',' read -ra APP_ARRAY <<< "$APPS"
+        
+        for app in "${APP_ARRAY[@]}"; do
+          app=$(echo "$app" | xargs)  # trim whitespace
+          echo "📊 Syncing application: $app"
+          
+          # Check if app exists
+          if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
+            
+            # Sync application
+            if [ "$FORCE" = "true" ]; then
+              echo "  ├── Force syncing $app..."
+              kubectl patch application "$app" -n argocd --type='merge' \
+                -p='{"operation":{"sync":{"revision":"main","prune":true}}}'
+            else
+              echo "  ├── Regular syncing $app..."
+              kubectl patch application "$app" -n argocd --type='merge' \
+                -p='{"operation":{"sync":{"revision":"main"}}}'
+            fi
+            
+            if [ $? -eq 0 ]; then
+              echo "  ├── ✅ Sync initiated for $app"
+            else
+              echo "  ├── ❌ Sync failed for $app"
+              SUCCESS="false"
+            fi
+            
+          else
+            echo "  ├── ⚠️  Application $app not found"
+            SUCCESS="false"
+          fi
+        done
+        
+        # Wait for health if requested
+        if [ "$(params.wait-health)" = "true" ] && [ "$SUCCESS" = "true" ]; then
+          echo "⏳ Waiting for applications to be healthy..."
+          for app in "${APP_ARRAY[@]}"; do
+            app=$(echo "$app" | xargs)
+            echo "  ├── Waiting for $app..."
+            kubectl wait --for=condition=Healthy application/"$app" -n argocd --timeout=300s || true
+          done
+        fi
+        
+        printf "%s" "$SUCCESS" > $(results.sync-success.path)
+        
+        if [ "$SUCCESS" = "true" ]; then
+          echo "✅ All applications synced successfully"
+        else
+          echo "❌ Some applications failed to sync"
+        fi
