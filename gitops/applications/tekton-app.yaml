@@ -39,7 +39,7 @@ spec:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
-      - NamespaceMetadata={"labels":{"pod-security.kubernetes.io/enforce":"privileged"}}
+      - ServerSideApply=true
     retry:
       limit: 5
       backoff:
