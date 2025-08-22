@@ -2,7 +2,7 @@
 
 global:
   namespace: ebpf-security
-  registry: "registry.registry.svc.cluster.local:5000"  # Custom internal registry with TLS
+  registry: "registry.registry.svc.cluster.local:5000"  # Custom internal registry with TLS enabled
   imageTag: "latest"
   
 # ML Detector Configuration
