@@ -33,21 +33,10 @@ prometheus:
       fsGroup: 65534
       fsGroupChangePolicy: OnRootMismatch
     
-    # Runtime args (safe defaults)
+    # Runtime args (safe defaults)  
     extraArgs:
       query.max-concurrency: "20"
       query.timeout: "2m"
-      query.log-file: "/var/log/prometheus/query.log"
-    
-    # Additional volumes for query logging
-    extraVolumes:
-      - name: query-log-dir
-        emptyDir: {}
-    
-    # Additional volume mounts for query logging
-    extraVolumeMounts:
-      - name: query-log-dir
-        mountPath: /var/log/prometheus
     
     # Fix reload configuration
     configReloader:
