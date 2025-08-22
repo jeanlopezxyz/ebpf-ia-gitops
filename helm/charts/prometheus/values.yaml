@@ -7,10 +7,6 @@ prometheus:
   # AlertManager configuration
   alertmanager:
     enabled: true
-    persistentVolume:
-      enabled: true
-      size: 2Gi
-      storageClass: "csi-hostpath-sc"
     service:
       type: ClusterIP
       port: 9093
@@ -117,3 +113,16 @@ serviceMonitor:
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: ebpf-ai-platform
+
+# AlertManager subchart configuration
+alertmanager:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: "csi-hostpath-sc"
+  podSecurityContext:
+    runAsUser: 65534
+    runAsNonRoot: true
+    runAsGroup: 65534
+    fsGroup: 65534
