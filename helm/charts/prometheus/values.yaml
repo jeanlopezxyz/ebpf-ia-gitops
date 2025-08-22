@@ -26,12 +26,11 @@ prometheus:
       port: 80
     retention: "30d"
     
-    # Security context: run as non-root, ensure volume write via fsGroup
+    # Security context: run as root for proper volume access (standard for Prometheus)
     securityContext:
-      runAsUser: 65534
-      runAsGroup: 65534
+      runAsUser: 0
+      runAsGroup: 0
       fsGroup: 65534
-      fsGroupChangePolicy: OnRootMismatch
     
     # Runtime args (safe defaults)  
     extraArgs:
