@@ -26,16 +26,23 @@ prometheus:
       port: 80
     retention: "30d"
     
-    # Security context: run as root for proper volume access (standard for Prometheus)
+    # Security context: run as non-root (required by cluster policy)
     securityContext:
-      runAsUser: 0
-      runAsGroup: 0
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
       fsGroup: 65534
+    
+    # Environment variables to disable problematic features
+    env:
+      - name: GOMAXPROCS
+        value: "2"
     
     # Runtime args (safe defaults)  
     extraArgs:
       query.max-concurrency: "20"
       query.timeout: "2m"
+      query.max-samples: "50000000"
     
     # Fix reload configuration
     configReloader:
