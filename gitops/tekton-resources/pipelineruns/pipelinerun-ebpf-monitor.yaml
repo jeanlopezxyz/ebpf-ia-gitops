@@ -37,7 +37,7 @@ spec:
     - name: git-revision
       value: main
     - name: image-registry
-      value: localhost:5000
+      value: 10.106.78.30:80
     - name: image-name
       value: ebpf-monitor
     - name: dockerfile-path
