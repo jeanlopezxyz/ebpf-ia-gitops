@@ -10,7 +10,7 @@ prometheus:
     persistentVolume:
       enabled: true
       size: 2Gi
-      storageClass: ""
+      storageClass: "csi-hostpath-sc"
     service:
       type: ClusterIP
       port: 9093
@@ -20,7 +20,7 @@ prometheus:
     persistentVolume:
       enabled: true
       size: 8Gi
-      storageClass: ""
+      storageClass: "csi-hostpath-sc"
     service:
       type: ClusterIP
       port: 80
