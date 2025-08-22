@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: StorageClass
+metadata:
+  name: csi-hostpath-sc
+  annotations:
+    # Set CSI hostpath as the default storage class
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: hostpath.csi.k8s.io
+parameters:
+  # CSI hostpath parameters for better fsGroup support
+  type: Directory
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
