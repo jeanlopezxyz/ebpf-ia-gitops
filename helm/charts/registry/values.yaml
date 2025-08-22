@@ -47,7 +47,7 @@ probes:
 
 # TLS Configuration
 tls:
-  enabled: true
+  enabled: false
   # Registry hostname for certificate Subject Alternative Name
   hostname: "registry.registry.svc.cluster.local"
   # Registry external IP address
