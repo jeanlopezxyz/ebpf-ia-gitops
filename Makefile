@@ -32,7 +32,7 @@ status: ## Show status of all components
 	@echo "📊 Component Status:"
 	@echo ""
 	@echo "🎯 Minikube:"
-	@minikube status --profile ebpf-gitops || echo "❌ Minikube not running"
+	@minikube status --profile ebpf-ia || echo "❌ Minikube not running"
 	@echo ""
 	@echo "☸️  Kubernetes Nodes:"
 	@kubectl get nodes 2>/dev/null || echo "❌ Cluster not accessible"
@@ -85,7 +85,7 @@ port-forward: ## Setup port forwarding for local access
 	@wait
 
 dashboard: ## Open Minikube dashboard
-	minikube dashboard --profile ebpf-gitops
+	minikube dashboard --profile ebpf-ia
 
 threats: ## Open threat detection dashboard via port-forward
 	@echo "🚨 Opening eBPF + AI Threat Detection Dashboard..."

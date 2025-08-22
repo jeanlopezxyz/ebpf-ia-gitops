@@ -4,7 +4,7 @@
   connection: local
   gather_facts: yes
   vars:
-    minikube_profile: "ebpf-gitops"
+    minikube_profile: "ebpf-ia"
     kubernetes_namespace: "ebpf-security"
     argocd_namespace: "argocd"
     

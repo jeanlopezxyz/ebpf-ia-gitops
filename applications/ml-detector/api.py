@@ -48,9 +48,15 @@ def create_api(detector: ThreatDetector) -> Blueprint:
                 except ValidationError as ve:
                     return jsonify({"error": ve.errors()}), 400
                 result = detector.detect(req.to_features_dict())
-                # increment counters per threat
+                # increment counters per threat (with required labels)
                 for t in result.get("threat_types", []):
-                    THREATS_DETECTED.labels(threat_type=t).inc()
+                    confidence = result.get("confidence", 0.0)
+                    confidence_level = "high" if confidence > 0.7 else "medium" if confidence > 0.4 else "low"
+                    THREATS_DETECTED.labels(
+                        threat_type=t, 
+                        confidence_level=confidence_level,
+                        source_ip="api_request"
+                    ).inc()
                 return jsonify(result)
         except Exception as e:
             logger.error(f"Detection error: {e}")
@@ -65,6 +71,29 @@ def create_api(detector: ThreatDetector) -> Blueprint:
             detector.train_models()
             return jsonify({"status": "training completed"})
         except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @api.route("/classify_username", methods=["POST"])
+    def classify_username() -> Response:
+        """Classify username content using n-gram analysis (Rakuten approach)."""
+        try:
+            data = request.get_json(force=True) or {}
+            username_text = data.get("username_text", "")
+            
+            if not username_text:
+                return jsonify({"error": "username_text required"}), 400
+            
+            predicted_type, confidence = detector._classify_username_content(username_text)
+            
+            return jsonify({
+                "username_text": username_text,
+                "predicted_type": predicted_type,
+                "confidence": confidence,
+                "n_gram_analysis": True
+            })
+            
+        except Exception as e:
+            logger.error(f"Username classification error: {e}")
             return jsonify({"error": str(e)}), 500
 
     @api.route("/stats")
@@ -105,8 +134,15 @@ def create_api(detector: ThreatDetector) -> Blueprint:
             with PROCESSING_TIME.time():
                 REQUESTS_TOTAL.inc()
                 result = detector.detect(features)
+                # increment counters per threat (with required labels)
                 for t in result.get("threat_types", []):
-                    THREATS_DETECTED.labels(threat_type=t).inc()
+                    confidence = result.get("confidence", 0.0)
+                    confidence_level = "high" if confidence > 0.7 else "medium" if confidence > 0.4 else "low"
+                    THREATS_DETECTED.labels(
+                        threat_type=t, 
+                        confidence_level=confidence_level,
+                        source_ip="prometheus_query"
+                    ).inc()
                 return jsonify({"features": features, "result": result})
         except Exception as e:
             logger.error(f"Prometheus detection error: {e}")

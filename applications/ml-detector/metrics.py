@@ -31,25 +31,25 @@ THREAT_CONFIDENCE = Histogram(
 PORT_SCAN_DETECTED = Counter(
     "ml_detector_port_scan_total", 
     "Port scanning attempts detected",
-    ["severity"]
+    ["severity", "source_ip"]
 )
 
 DDOS_DETECTED = Counter(
     "ml_detector_ddos_total",
     "DDoS attacks detected", 
-    ["attack_type"]
+    ["attack_type", "source_ip"]
 )
 
 DATA_EXFILTRATION_DETECTED = Counter(
     "ml_detector_data_exfiltration_total",
     "Data exfiltration attempts detected",
-    ["direction"]
+    ["direction", "source_ip"]
 )
 
 ANOMALY_DETECTED = Counter(
     "ml_detector_anomaly_total",
     "ML-based anomalies detected",
-    ["model_type", "severity"]
+    ["model_type", "severity", "source_ip"]
 )
 
 # Model performance metrics
@@ -63,8 +63,8 @@ MODEL_ACCURACY = Gauge(
 )
 ANOMALY_SCORE = Gauge(
     "ml_detector_anomaly_score", 
-    "Current anomaly score",
-    ["feature_type"]
+    "Current anomaly score"
+    # Removed labels to match usage in detector.py
 )
 
 # Feature analysis metrics
@@ -72,6 +72,19 @@ FEATURE_VALUES = Gauge(
     "ml_detector_feature_values",
     "Current feature values from network data",
     ["feature_name"]
+)
+
+# IP-specific metrics for Grafana dashboards
+IP_PACKET_COUNT = Gauge(
+    "ml_detector_ip_packet_count",
+    "Packet count per source IP",
+    ["source_ip"]
+)
+
+SUSPICIOUS_IP_ACTIVITY = Gauge(
+    "ml_detector_suspicious_ip_activity",
+    "Suspicious activity level per IP (0-1)",
+    ["source_ip", "activity_type"]
 )
 
 THREAT_SEVERITY = Gauge(
@@ -91,6 +104,48 @@ MODEL_RETRAIN_DURATION = Histogram(
     "ml_detector_model_retrain_seconds",
     "Time spent retraining models",
     ["model_name"]
+)
+
+# Training data quality metrics
+TRAINING_DATA_QUALITY = Gauge(
+    "ml_detector_training_data_quality",
+    "Quality metrics for training data",
+    ["metric_type"]
+)
+
+TRAINING_WINDOW_SIZE = Gauge(
+    "ml_detector_training_window_size",
+    "Current size of training windows",
+    ["window_type"]
+)
+
+# Advanced ML model metrics (Rakuten-level)
+DBSCAN_ANOMALY_SCORE = Gauge(
+    "ml_detector_dbscan_anomaly_score",
+    "DBSCAN-based anomaly detection score"
+)
+
+VAE_RECONSTRUCTION_ERROR = Gauge(
+    "ml_detector_vae_reconstruction_error", 
+    "VAE reconstruction error for sequential anomaly detection"
+)
+
+ADVANCED_MODEL_STATUS = Gauge(
+    "ml_detector_advanced_model_status",
+    "Status of advanced ML models (0=not ready, 1=ready)",
+    ["model_name"]
+)
+
+SEQUENTIAL_ANOMALY_DETECTED = Counter(
+    "ml_detector_sequential_anomaly_total",
+    "Sequential anomalies detected by VAE",
+    ["severity", "source_ip"] 
+)
+
+CLUSTER_ANOMALY_DETECTED = Counter(
+    "ml_detector_cluster_anomaly_total", 
+    "Cluster-based anomalies detected by DBSCAN",
+    ["cluster_type", "source_ip"]
 )
 
 

@@ -59,7 +59,12 @@ int network_monitor(struct xdp_md *ctx) {
     event->src_port = 0;
     event->dst_port = 0;
 
-    void *l4 = (void *)ip + (ip->ihl * 4);
+    // Validate IP header length and calculate L4 pointer
+    int ip_hdr_len = ip->ihl * 4;
+    if (ip_hdr_len < 20 || (void *)ip + ip_hdr_len > data_end)
+        goto submit;
+    
+    void *l4 = (void *)ip + ip_hdr_len;
     
     if (ip->protocol == IPPROTO_TCP) {
         struct tcphdr *tcp = l4;
@@ -79,6 +84,7 @@ int network_monitor(struct xdp_md *ctx) {
         }
     }
 
+submit:
     bpf_ringbuf_submit(event, 0);
     return XDP_PASS;
 }

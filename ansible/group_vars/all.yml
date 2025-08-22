@@ -21,7 +21,7 @@ deployment_mode:
   
 # Minikube configuration
 minikube:
-  profile: "ebpf-gitops"
+  profile: "ebpf-ia"
   nodes: 3
   memory: "4096"
   cpus: 2

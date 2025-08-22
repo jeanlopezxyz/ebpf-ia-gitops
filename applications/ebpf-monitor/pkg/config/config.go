@@ -34,7 +34,13 @@ func parseDuration(env, def string) time.Duration {
 	return d
 }
 
-func mustDuration(s string) time.Duration { d, _ := time.ParseDuration(s); return d }
+func mustDuration(s string) time.Duration { 
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		panic("invalid default duration: " + s + " error: " + err.Error())
+	}
+	return d 
+}
 
 func New() Config {
 	return Config{

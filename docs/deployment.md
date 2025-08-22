@@ -165,8 +165,8 @@ curl http://localhost:5000/health
 docker ps
 
 # Restart minikube
-minikube delete --profile ebpf-gitops
-minikube start --profile ebpf-gitops --memory=8192 --cpus=4
+minikube delete --profile ebpf-ia
+minikube start --profile ebpf-ia --memory=8192 --cpus=4
 ```
 
 #### ArgoCD Applications Not Syncing
@@ -219,7 +219,7 @@ ansible-playbook -i ansible/inventory/localhost.yml ansible/cleanup.yml
 argocd app delete ebpf-ai
 
 # Delete only cluster
-minikube delete --profile ebpf-gitops
+minikube delete --profile ebpf-ia
 ```
 
 ## Production Considerations

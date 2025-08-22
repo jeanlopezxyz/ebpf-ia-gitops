@@ -48,6 +48,14 @@ type NetworkStats struct {
 	TCPPackets       int64   `json:"tcp_packets"`
 	UDPPackets       int64   `json:"udp_packets"`
 	SYNPackets       int64   `json:"syn_packets"`
+	
+	// QoS metrics (Rakuten-style transport layer analysis)
+	AvgLatencyMs     float64 `json:"avg_latency_ms"`
+	MaxLatencyMs     float64 `json:"max_latency_ms"`  
+	MinLatencyMs     float64 `json:"min_latency_ms"`
+	JitterMs         float64 `json:"jitter_ms"`
+	PacketLossRate   float64 `json:"packet_loss_rate"`
+	RetransmitRate   float64 `json:"retransmit_rate"`
 }
 
 // Application represents the main eBPF application
@@ -61,17 +69,27 @@ type Application struct {
 	link   link.Link
 	reader *ringbuf.Reader
 
+	// HTTP client for ML detector (reused)
+	httpClient *http.Client
+
 	// Statistics tracking
 	mu         sync.RWMutex
 	stats      NetworkStats
 	ips        map[uint32]struct{}
 	ports      map[uint16]struct{}
+	ipCounts   map[uint32]int64  // Track packets per IP
+	portCounts map[uint16]int64  // Track packets per port
 	tcpPackets int64
 	udpPackets int64
 	synPackets int64
 	totalBytes uint64
 	totalPkts  uint64
 	lastReset  time.Time
+	
+	// QoS tracking (Rakuten-style)
+	latencies    []float64         // Latency samples in ms
+	lastSeen     map[uint32]uint64 // Last seen timestamp per flow
+	retransmits  int64            // TCP retransmission count
 }
 
 // NewApplication creates a new eBPF application
@@ -82,12 +100,17 @@ func NewApplication() (*Application, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Application{
-		config:    cfg,
-		ctx:       ctx,
-		cancel:    cancel,
-		ips:       make(map[uint32]struct{}),
-		ports:     make(map[uint16]struct{}),
-		lastReset: time.Now(),
+		config:     cfg,
+		ctx:        ctx,
+		cancel:     cancel,
+		httpClient: &http.Client{Timeout: cfg.HTTPClientTimeout},
+		ips:        make(map[uint32]struct{}),
+		ports:      make(map[uint16]struct{}),
+		ipCounts:   make(map[uint32]int64),
+		portCounts: make(map[uint16]int64),
+		lastSeen:   make(map[uint32]uint64),
+		latencies:  make([]float64, 0, 1000),
+		lastReset:  time.Now(),
 	}, nil
 }
 
@@ -237,18 +260,48 @@ func (app *Application) processEvent(event NetworkEvent) {
 
 	metrics.BytesProcessed.WithLabelValues(protocolName(event.Protocol)).Add(float64(event.PacketSize))
 
-	// Track unique IPs and ports
+	// Track unique IPs and ports with counts
 	app.ips[event.SrcIP] = struct{}{}
 	app.ips[event.DstIP] = struct{}{}
+	app.ipCounts[event.SrcIP]++
+	app.ipCounts[event.DstIP]++
+	
 	if event.SrcPort != 0 {
 		app.ports[event.SrcPort] = struct{}{}
+		app.portCounts[event.SrcPort]++
 	}
 	if event.DstPort != 0 {
 		app.ports[event.DstPort] = struct{}{}
+		app.portCounts[event.DstPort]++
 	}
 
 	app.totalBytes += uint64(event.PacketSize)
 	app.totalPkts++
+	
+	// QoS analysis (Rakuten-style transport layer)
+	flowKey := event.SrcIP ^ event.DstIP  // Simple flow identifier
+	currentTime := event.Timestamp
+	
+	if lastTime, exists := app.lastSeen[flowKey]; exists {
+		// Calculate latency between packets in same flow
+		latencyNs := currentTime - lastTime
+		latencyMs := float64(latencyNs) / 1000000.0  // Convert to ms
+		
+		if latencyMs > 0 && latencyMs < 1000 {  // Reasonable latency range
+			app.latencies = append(app.latencies, latencyMs)
+			
+			// Keep latency buffer reasonable size
+			if len(app.latencies) > 1000 {
+				app.latencies = app.latencies[500:]  // Keep last 500
+			}
+		}
+	}
+	app.lastSeen[flowKey] = currentTime
+	
+	// Detect retransmissions (simplified)
+	if event.Protocol == 6 && event.TCPFlags&0x08 != 0 {  // TCP with retransmit flag approximation
+		app.retransmits++
+	}
 
 	// Log interesting packets
 	if event.SrcPort != 0 || event.DstPort != 0 {
@@ -285,7 +338,7 @@ func (app *Application) updateStats() {
 		case <-ticker.C:
 			app.mu.Lock()
 			elapsed := time.Since(app.lastReset).Seconds()
-			if elapsed > 0 {
+			if elapsed > 0.001 { // Minimum 1ms to avoid inflated rates
 				app.stats.PacketsPerSecond = float64(app.totalPkts) / elapsed
 				app.stats.BytesPerSecond = float64(app.totalBytes) / elapsed
 				app.stats.UniqueIPs = len(app.ips)
@@ -293,6 +346,21 @@ func (app *Application) updateStats() {
 				app.stats.TCPPackets = app.tcpPackets
 				app.stats.UDPPackets = app.udpPackets
 				app.stats.SYNPackets = app.synPackets
+				
+				// Calculate QoS statistics (Rakuten-style)
+				if len(app.latencies) > 0 {
+					app.stats.AvgLatencyMs = calculateMean(app.latencies)
+					app.stats.MaxLatencyMs = calculateMax(app.latencies)
+					app.stats.MinLatencyMs = calculateMin(app.latencies)
+					app.stats.JitterMs = calculateJitter(app.latencies)
+				}
+				
+				// Calculate packet loss and retransmission rates
+				if app.totalPkts > 0 {
+					app.stats.RetransmitRate = float64(app.retransmits) / float64(app.totalPkts)
+					// Simplified packet loss estimation
+					app.stats.PacketLossRate = app.stats.RetransmitRate * 0.5  // Approximation
+				}
 
 				// Update Prometheus gauges
 				metrics.PacketsPerSecond.Set(app.stats.PacketsPerSecond)
@@ -303,6 +371,8 @@ func (app *Application) updateStats() {
 				// Reset for next window
 				app.ips = make(map[uint32]struct{})
 				app.ports = make(map[uint16]struct{})
+				app.ipCounts = make(map[uint32]int64)
+				app.portCounts = make(map[uint16]int64)
 				app.tcpPackets = 0
 				app.udpPackets = 0
 				app.synPackets = 0
@@ -320,6 +390,92 @@ func (app *Application) getStats() NetworkStats {
 	app.mu.RLock()
 	defer app.mu.RUnlock()
 	return app.stats
+}
+
+// getTopIPs returns top N IPs by packet count
+func (app *Application) getTopIPs(n int) map[string]int64 {
+	app.mu.RLock()
+	defer app.mu.RUnlock()
+	
+	type ipCount struct {
+		ip    string
+		count int64
+	}
+	
+	var ips []ipCount
+	for ip, count := range app.ipCounts {
+		ips = append(ips, ipCount{ipToString(ip), count})
+	}
+	
+	// Simple sort - get top N
+	result := make(map[string]int64)
+	for i := 0; i < len(ips) && i < n; i++ {
+		maxIdx := i
+		for j := i + 1; j < len(ips); j++ {
+			if ips[j].count > ips[maxIdx].count {
+				maxIdx = j
+			}
+		}
+		if maxIdx != i {
+			ips[i], ips[maxIdx] = ips[maxIdx], ips[i]
+		}
+		result[ips[i].ip] = ips[i].count
+	}
+	return result
+}
+
+// QoS calculation functions (Rakuten-style)
+func calculateMean(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, v := range values {
+		sum += v
+	}
+	return sum / float64(len(values))
+}
+
+func calculateMax(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	max := values[0]
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	return max
+}
+
+func calculateMin(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	min := values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+	}
+	return min
+}
+
+func calculateJitter(values []float64) float64 {
+	if len(values) < 2 {
+		return 0
+	}
+	
+	// Calculate variance in latency (simplified jitter)
+	mean := calculateMean(values)
+	sumSquares := 0.0
+	for _, v := range values {
+		diff := v - mean
+		sumSquares += diff * diff
+	}
+	variance := sumSquares / float64(len(values))
+	return variance  // Simplified jitter as variance
 }
 
 // startHTTPServer starts the HTTP API server
@@ -394,6 +550,7 @@ func (app *Application) startMLClient() {
 				return
 			case <-ticker.C:
 				stats := app.getStats()
+				topIPs := app.getTopIPs(10) // Get top 10 IPs
 
 				features := map[string]interface{}{
 					"packets_per_second": stats.PacketsPerSecond,
@@ -403,6 +560,14 @@ func (app *Application) startMLClient() {
 					"tcp_packets":        stats.TCPPackets,
 					"udp_packets":        stats.UDPPackets,
 					"syn_packets":        stats.SYNPackets,
+					"top_ips":           topIPs, // Include specific attacking IPs
+					
+					// QoS metrics (Rakuten-style transport analysis)
+					"avg_latency_ms":    stats.AvgLatencyMs,
+					"max_latency_ms":    stats.MaxLatencyMs,
+					"jitter_ms":         stats.JitterMs,
+					"packet_loss_rate":  stats.PacketLossRate,
+					"retransmit_rate":   stats.RetransmitRate,
 				}
 
 				log.Printf("📊 Sending to ML: pps=%.2f, bps=%.2f, ips=%d, ports=%d",
@@ -426,8 +591,7 @@ func (app *Application) sendToMLDetector(features map[string]interface{}) error 
 		return fmt.Errorf("marshaling: %w", err)
 	}
 
-	client := &http.Client{Timeout: app.config.HTTPClientTimeout}
-	resp, err := client.Post(
+	resp, err := app.httpClient.Post(
 		app.config.MLDetectorURL+"/detect",
 		"application/json",
 		bytes.NewBuffer(jsonData),

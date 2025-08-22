@@ -47,9 +47,8 @@ class PrometheusSource:
         # Rates per second
         pps = self._query(f"sum(rate({self.m_packets}[{self.window}]))")
         bps = self._query(f"sum(rate({self.m_bytes}[{self.window}]))")
-        tcp = self._query(f"sum(rate({self.m_packets}{{protocol=\"tcp\"}}[{self.window}]))")
-        total = self._query(f"sum(rate({self.m_packets}[{self.window}]))")
-        tcp_ratio = (tcp / total) if total > 0 else 0.0
+        tcp_packets = self._query(f"sum(rate({self.m_packets}{{protocol=\"tcp\"}}[{self.window}]))")
+        udp_packets = self._query(f"sum(rate({self.m_packets}{{protocol=\"udp\"}}[{self.window}]))")
 
         # Optional metrics (best-effort)
         syn = 0.0
@@ -67,7 +66,8 @@ class PrometheusSource:
             "bytes_per_second": bps,
             "unique_ips": uniq_ips,
             "unique_ports": uniq_ports,
-            "tcp_ratio": tcp_ratio,
+            "tcp_packets": tcp_packets,
+            "udp_packets": udp_packets,
             "syn_packets": syn,
         }
 

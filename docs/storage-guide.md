@@ -99,16 +99,16 @@ kubectl get pvc registry-storage -n container-registry -w
 ### Docker Driver
 ```bash
 # Registry data location in Minikube VM
-minikube ssh --profile ebpf-gitops -- ls -la /var/lib/registry-storage/
+minikube ssh --profile ebpf-ia -- ls -la /var/lib/registry-storage/
 
 # Host location (Docker volume)
-docker exec minikube-ebpf-gitops ls -la /var/lib/registry-storage/
+docker exec minikube-ebpf-ia ls -la /var/lib/registry-storage/
 ```
 
 ### VirtualBox/VMware/KVM2 Drivers
 ```bash
 # Registry data location
-minikube ssh --profile ebpf-gitops -- ls -la /tmp/hostpath-provisioner/
+minikube ssh --profile ebpf-ia -- ls -la /tmp/hostpath-provisioner/
 ```
 
 ## Performance Optimization
