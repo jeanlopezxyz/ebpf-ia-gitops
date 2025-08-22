@@ -21,7 +21,7 @@ spec:
       default: main
     - name: image-registry
       description: Container registry URL  
-      default: container-registry.container-registry.svc.cluster.local:5000
+      default: registry.registry.svc.cluster.local:5000
     - name: image-name
       description: Image name (e.g., ebpf-monitor, ml-detector)
       type: string

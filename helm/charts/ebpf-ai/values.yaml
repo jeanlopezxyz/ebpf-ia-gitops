@@ -2,7 +2,7 @@
 
 global:
   namespace: ebpf-security
-  registry: "container-registry.container-registry.svc.cluster.local:5000"  # Custom internal registry
+  registry: "registry.registry.svc.cluster.local:5000"  # Custom internal registry
   imageTag: "latest"
   
 # ML Detector Configuration
