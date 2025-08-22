@@ -15,7 +15,7 @@ grafana:
   persistence:
     enabled: true
     size: 1Gi
-    storageClassName: ""
+    storageClassName: "csi-hostpath-sc"
     
   # Enhanced plugins for eBPF-AI visualizations (compatible with Grafana v10+)
   plugins:

@@ -18,7 +18,7 @@ service:
 persistence:
   enabled: true
   existingClaim: ""
-  storageClass: "standard"
+  storageClass: "csi-hostpath-sc"
   size: 20Gi
 
 resources: {}

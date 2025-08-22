@@ -31,7 +31,7 @@ mlDetector:
   persistence:
     enabled: true
     size: 1Gi
-    storageClass: ""  # Use default storage class
+    storageClass: "csi-hostpath-sc"  # Use CSI storage class with fsGroup support
       
   env:
     - name: MODEL_PATH
