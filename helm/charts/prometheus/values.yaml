@@ -33,6 +33,12 @@ prometheus:
       runAsNonRoot: true
       fsGroup: 65534
     
+    # Disable query logging to avoid permission issues
+    extraArgs:
+      query.max-concurrency: "20"
+      query.timeout: "2m"
+      enable-feature: ""
+    
     # Fix reload configuration
     configReloader:
       enabled: true
