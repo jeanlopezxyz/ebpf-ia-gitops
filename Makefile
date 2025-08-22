@@ -47,7 +47,7 @@ status: ## Show status of all components
 	@kubectl get pods -n ebpf-security 2>/dev/null || echo "❌ ebpf-security namespace not found"
 	@echo ""
 	@echo "🐳 Registry Status:"
-	@kubectl get pods -n container-registry 2>/dev/null || echo "❌ Registry namespace not found"
+	@kubectl get pods -n registry 2>/dev/null || echo "❌ Registry namespace not found"
 
 sync: ## Force sync all ArgoCD applications
 	@echo "🔄 Force syncing all applications..."
@@ -81,7 +81,7 @@ port-forward: ## Setup port forwarding for local access
 	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
 	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
 	@kubectl port-forward svc/tekton-dashboard -n tekton 9097:9097 &
-	@kubectl port-forward svc/registry -n container-registry 5001:5000 &
+	@kubectl port-forward svc/registry -n registry 5001:5000 &
 	@wait
 
 dashboard: ## Open Minikube dashboard
