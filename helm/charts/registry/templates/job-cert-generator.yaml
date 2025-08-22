@@ -1,0 +1,136 @@
+{{- if .Values.tls.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "registry.fullname" . }}-cert-generator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "registry.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cert-generator
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "registry.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cert-generator
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: cert-generator
+        image: alpine/openssl:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "🔐 Generating TLS certificates for registry..."
+          
+          # Create working directory
+          mkdir -p /tmp/certs
+          cd /tmp/certs
+          
+          # Generate CA private key
+          openssl genrsa -out ca-key.pem 4096
+          
+          # Generate CA certificate
+          openssl req -new -x509 -days 3650 -key ca-key.pem -sha256 \
+            -out ca.pem -subj "/CN=Container Registry CA"
+          
+          # Generate server private key
+          openssl genrsa -out server-key.pem 4096
+          
+          # Create certificate signing request
+          openssl req -subj "/CN={{ .Values.tls.hostname | default "registry.container-registry.svc.cluster.local" }}" \
+            -sha256 -new -key server-key.pem -out server.csr
+          
+          # Create extensions file for server certificate
+          cat > server-extfile.cnf <<EOF
+          subjectAltName = DNS:{{ .Values.tls.hostname | default "registry.container-registry.svc.cluster.local" }},DNS:registry,IP:{{ .Values.tls.registryIP | default "192.168.67.2" }},IP:127.0.0.1,DNS:localhost
+          extendedKeyUsage = serverAuth
+          EOF
+          
+          # Generate server certificate
+          openssl x509 -req -days 3650 -sha256 -in server.csr \
+            -CA ca.pem -CAkey ca-key.pem -out server.pem \
+            -extfile server-extfile.cnf -CAcreateserial
+          
+          echo "✅ Certificates generated successfully"
+          
+          # Create TLS secret for registry
+          kubectl create secret tls registry-tls \
+            --cert=server.pem \
+            --key=server-key.pem \
+            --namespace={{ .Release.Namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Create CA secret for trust distribution
+          kubectl create secret generic registry-ca \
+            --from-file=ca.crt=ca.pem \
+            --namespace={{ .Release.Namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          echo "🔑 TLS secrets created successfully"
+        volumeMounts:
+        - name: kubectl-config
+          mountPath: /root/.kube
+          readOnly: true
+      volumes:
+      - name: kubectl-config
+        emptyDir: {}
+      serviceAccountName: {{ include "registry.fullname" . }}-cert-generator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "registry.fullname" . }}-cert-generator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "registry.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cert-generator
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "registry.fullname" . }}-cert-generator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "registry.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cert-generator
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "registry.fullname" . }}-cert-generator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "registry.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cert-generator
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+subjects:
+- kind: ServiceAccount
+  name: {{ include "registry.fullname" . }}-cert-generator
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "registry.fullname" . }}-cert-generator
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
