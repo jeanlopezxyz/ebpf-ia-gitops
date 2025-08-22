@@ -18,6 +18,8 @@ spec:
   taskRunTemplate:
     serviceAccountName: pipeline-sa
     podTemplate:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         fsGroup: 65532
         seccompProfile:
@@ -37,7 +39,7 @@ spec:
     - name: git-revision
       value: main
     - name: image-registry
-      value: 10.106.78.30:80
+      value: localhost:5000
     - name: image-name
       value: ml-detector
     - name: dockerfile-path
