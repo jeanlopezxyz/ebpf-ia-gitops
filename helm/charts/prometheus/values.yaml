@@ -37,7 +37,6 @@ prometheus:
     extraArgs:
       query.max-concurrency: "20"
       query.timeout: "2m"
-      storage.tsdb.path: "/data"
     
     # Fix reload configuration
     configReloader:
