@@ -107,11 +107,10 @@ serviceMonitor:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: ebpf-ai-platform
 
-# AlertManager subchart configuration (based on official structure)
+# AlertManager subchart configuration (exact official structure)
 alertmanager:
   enabled: true
   persistence:
-    enabled: true
     size: 2Gi
     storageClass: "csi-hostpath-sc"
   podSecurityContext:
