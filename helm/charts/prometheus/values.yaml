@@ -121,6 +121,8 @@ alertmanager:
     enabled: true
     size: 2Gi
     storageClass: "csi-hostpath-sc"
+    accessModes:
+      - ReadWriteOnce
   podSecurityContext:
     runAsUser: 65534
     runAsNonRoot: true
