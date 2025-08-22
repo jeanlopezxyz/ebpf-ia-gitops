@@ -43,6 +43,7 @@ prometheus:
       query.max-concurrency: "20"
       query.timeout: "2m"
       query.max-samples: "50000000"
+      enable-feature: ""
     
     # Fix reload configuration
     configReloader:
