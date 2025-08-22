@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "registry.fullname" . }}-insecure-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "registry.labels" . | nindent 4 }}
+    app.kubernetes.io/component: insecure-config
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "registry.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: insecure-config
+  template:
+    metadata:
+      labels:
+        {{- include "registry.labels" . | nindent 8 }}
+        app.kubernetes.io/component: insecure-config
+    spec:
+      hostPID: true
+      hostNetwork: true
+      containers:
+      - name: insecure-config
+        image: alpine:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "🔧 Configuring Docker daemon to trust insecure registry..."
+          
+          # Configure Docker daemon.json
+          DOCKER_CONFIG_DIR="/host/etc/docker"
+          mkdir -p "$DOCKER_CONFIG_DIR"
+          
+          cat > "$DOCKER_CONFIG_DIR/daemon.json" <<EOF
+          {
+            "insecure-registries": [
+              "10.96.0.0/12",
+              "127.0.0.0/8",
+              "::1/128",
+              "registry.registry.svc.cluster.local:5000",
+              "192.168.67.2:5000"
+            ],
+            "registry-mirrors": [],
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            }
+          }
+          EOF
+          
+          echo "✅ Docker daemon.json updated with insecure registry configuration"
+          
+          # Configure containerd for insecure registries
+          CONTAINERD_CONFIG_DIR="/host/etc/containerd/certs.d"
+          
+          # Registry service name configuration
+          mkdir -p "$CONTAINERD_CONFIG_DIR/registry.registry.svc.cluster.local:5000"
+          cat > "$CONTAINERD_CONFIG_DIR/registry.registry.svc.cluster.local:5000/hosts.toml" <<EOF
+          server = "http://registry.registry.svc.cluster.local:5000"
+          
+          [host."http://registry.registry.svc.cluster.local:5000"]
+            capabilities = ["pull", "resolve", "push"]
+            skip_verify = true
+          EOF
+          
+          # Registry IP configuration
+          mkdir -p "$CONTAINERD_CONFIG_DIR/192.168.67.2:5000"
+          cat > "$CONTAINERD_CONFIG_DIR/192.168.67.2:5000/hosts.toml" <<EOF
+          server = "http://192.168.67.2:5000"
+          
+          [host."http://192.168.67.2:5000"]
+            capabilities = ["pull", "resolve", "push"]
+            skip_verify = true
+          EOF
+          
+          echo "✅ Containerd configuration updated for insecure registries"
+          
+          # Restart Docker daemon to apply changes
+          echo "🔄 Attempting to restart Docker daemon..."
+          if nsenter --target 1 --mount --uts --ipc --net --pid -- systemctl restart docker; then
+            echo "✅ Docker daemon restarted successfully"
+          else
+            echo "⚠️ Docker daemon restart failed or not available"
+          fi
+          
+          echo "🎯 Registry configuration complete"
+          echo "📝 Configuration applied:"
+          echo "   - Docker insecure registries: registry.registry.svc.cluster.local:5000"
+          echo "   - Containerd HTTP configuration with skip_verify"
+          echo "   - Both service name and IP access configured"
+          
+          # Keep container running
+          sleep infinity
+        volumeMounts:
+        - name: host-docker-config
+          mountPath: /host/etc/docker
+        - name: host-containerd-config
+          mountPath: /host/etc/containerd
+        - name: host-proc
+          mountPath: /host/proc
+          readOnly: true
+        securityContext:
+          privileged: true
+      volumes:
+      - name: host-docker-config
+        hostPath:
+          path: /etc/docker
+          type: DirectoryOrCreate
+      - name: host-containerd-config
+        hostPath:
+          path: /etc/containerd
+          type: DirectoryOrCreate
+      - name: host-proc
+        hostPath:
+          path: /proc
+          type: Directory
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Exists
