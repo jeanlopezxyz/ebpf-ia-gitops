@@ -1,0 +1,14 @@
+apiVersion: v2
+name: container-registry
+description: Internal container registry optimized for Kubernetes cluster use
+type: application
+version: 1.0.0
+appVersion: "2.8.3"
+keywords:
+  - registry
+  - docker
+  - containers
+home: https://github.com/jeanlopezxyz/ebpf-ia-gitops
+maintainers:
+  - name: eBPF AI Team
+    email: team@ebpf-ai.local

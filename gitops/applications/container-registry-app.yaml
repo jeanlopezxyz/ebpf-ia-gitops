@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: container-registry
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: container-registry
+    app.kubernetes.io/part-of: ebpf-ai-platform
+    app.kubernetes.io/component: container-registry
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git
+    targetRevision: main
+    path: helm/charts/container-registry
+    helm:
+      releaseName: container-registry
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: container-registry
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10

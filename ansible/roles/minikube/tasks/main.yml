@@ -39,7 +39,6 @@
   loop:
     - metrics-server
     - dashboard
-    - registry
     - csi-hostpath-driver
   ignore_errors: yes
   
