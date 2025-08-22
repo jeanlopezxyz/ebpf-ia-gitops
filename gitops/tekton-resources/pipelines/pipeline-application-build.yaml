@@ -68,7 +68,7 @@ spec:
         - name: FORMAT
           value: docker
         - name: TLSVERIFY
-          value: "false"
+          value: "true"
         - name: BUILD_EXTRA_ARGS
           value: "--label=git.commit=$(params.git-revision) --label=build.date=$(date -u +'%Y-%m-%dT%H:%M:%SZ') --label=image.name=$(params.image-name)"
 
