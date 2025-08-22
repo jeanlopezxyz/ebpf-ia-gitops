@@ -21,13 +21,16 @@ spec:
       restartPolicy: Never
       containers:
       - name: cert-generator
-        image: alpine/openssl:latest
+        image: bitnami/kubectl:latest
         command:
         - sh
         - -c
         - |
           set -e
           echo "🔐 Generating TLS certificates for registry..."
+          
+          # Install openssl
+          apt-get update -qq && apt-get install -y -qq openssl
           
           # Create working directory
           mkdir -p /tmp/certs
