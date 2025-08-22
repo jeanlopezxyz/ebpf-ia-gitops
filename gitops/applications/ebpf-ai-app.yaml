@@ -22,7 +22,7 @@ spec:
         - name: global.namespace
           value: ebpf-security
         - name: global.registry
-          value: "registry.container-registry.svc.cluster.local:5000"
+          value: "registry.registry.svc.cluster.local:5000"
         - name: global.imageTag
           value: "latest"
         - name: mlDetector.replicaCount

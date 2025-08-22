@@ -19,7 +19,7 @@ spec:
       default: main
     - name: image-registry
       description: Container registry URL
-      default: registry.container-registry.svc.cluster.local:5000
+      default: registry.registry.svc.cluster.local:5000
     - name: image-name
       description: Image name (ml-detector or ebpf-monitor)
     - name: dockerfile-path

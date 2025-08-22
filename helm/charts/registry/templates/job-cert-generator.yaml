@@ -47,12 +47,12 @@ spec:
           openssl genrsa -out server-key.pem 4096
           
           # Create certificate signing request
-          openssl req -subj "/CN={{ .Values.tls.hostname | default "registry.container-registry.svc.cluster.local" }}" \
+          openssl req -subj "/CN={{ .Values.tls.hostname | default "registry.registry.svc.cluster.local" }}" \
             -sha256 -new -key server-key.pem -out server.csr
           
           # Create extensions file for server certificate
           cat > server-extfile.cnf <<EOF
-          subjectAltName = DNS:{{ .Values.tls.hostname | default "registry.container-registry.svc.cluster.local" }},DNS:registry,IP:{{ .Values.tls.registryIP | default "192.168.67.2" }},IP:127.0.0.1,DNS:localhost
+          subjectAltName = DNS:{{ .Values.tls.hostname | default "registry.registry.svc.cluster.local" }},DNS:registry,IP:{{ .Values.tls.registryIP | default "192.168.67.2" }},IP:127.0.0.1,DNS:localhost
           extendedKeyUsage = serverAuth
           EOF
           
