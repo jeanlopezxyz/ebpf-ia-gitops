@@ -2,7 +2,7 @@
 
 global:
   namespace: ebpf-security
-  registry: "registry.kube-system.svc.cluster.local:80"  # Minikube native registry
+  registry: "localhost:5000"  # Minikube native registry via proxy
   imageTag: "latest"
   
 # ML Detector Configuration

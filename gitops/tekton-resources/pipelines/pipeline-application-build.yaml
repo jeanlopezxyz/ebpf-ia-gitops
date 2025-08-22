@@ -20,8 +20,8 @@ spec:
       description: Git revision to build
       default: main
     - name: image-registry
-      description: Container registry URL
-      default: registry.kube-system.svc.cluster.local:80
+      description: Container registry URL  
+      default: localhost:5000
     - name: image-name
       description: Image name (e.g., ebpf-monitor, ml-detector)
       type: string

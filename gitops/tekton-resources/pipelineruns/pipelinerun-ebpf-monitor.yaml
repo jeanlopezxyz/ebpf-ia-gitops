@@ -37,7 +37,7 @@ spec:
     - name: git-revision
       value: main
     - name: image-registry
-      value: registry.kube-system.svc.cluster.local:80
+      value: localhost:5000
     - name: image-name
       value: ebpf-monitor
     - name: dockerfile-path
