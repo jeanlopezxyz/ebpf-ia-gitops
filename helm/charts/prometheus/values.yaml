@@ -26,20 +26,18 @@ prometheus:
       port: 80
     retention: "30d"
     
-    # Security context configuration with proper fsGroup for volume ownership
+    # Security context - disable problematic features while maintaining security
     securityContext:
       runAsUser: 65534
       runAsGroup: 65534
       runAsNonRoot: true
       fsGroup: 65534
     
-    # Pod security context to ensure proper volume permissions
-    podSecurityContext:
-      runAsUser: 65534
-      runAsGroup: 65534
-      runAsNonRoot: true  
-      fsGroup: 65534
-      supplementalGroups: [65534]
+    # Disable active query tracking to avoid file permission issues
+    extraArgs:
+      query.max-concurrency: "20"
+      query.timeout: "2m"
+      no-query-log: "true"
     
     # Fix reload configuration
     configReloader:
