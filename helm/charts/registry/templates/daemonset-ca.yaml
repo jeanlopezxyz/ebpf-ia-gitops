@@ -41,9 +41,16 @@ spec:
               "registry.registry.svc.cluster.local:5000",
               "192.168.67.2:5000",
               "10.0.0.0/8"
-            ]
+            ],
+            "registry-mirrors": [],
+            "debug": false
           }
           EOF
+          
+          # Restart Docker daemon to apply changes
+          if [ -f /host/bin/systemctl ]; then
+            chroot /host systemctl restart docker || echo "Docker restart failed or not available"
+          fi
           
           # Containerd configuration for insecure registry
           CONTAINERD_CONFIG_DIR="/host/etc/containerd/certs.d/registry.registry.svc.cluster.local:5000"
@@ -88,6 +95,9 @@ spec:
           mountPath: /host/etc/docker
         - name: containerd-certs
           mountPath: /host/etc/containerd/certs.d
+        - name: host-root
+          mountPath: /host
+          mountPropagation: HostToContainer
         securityContext:
           privileged: true
       volumes:
@@ -102,6 +112,10 @@ spec:
         hostPath:
           path: /etc/containerd/certs.d
           type: DirectoryOrCreate
+      - name: host-root
+        hostPath:
+          path: /
+          type: Directory
       tolerations:
       - effect: NoSchedule
         key: node-role.kubernetes.io/master
