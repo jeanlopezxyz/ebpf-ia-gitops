@@ -36,3 +36,15 @@ spec:
         factor: 2
         maxDuration: 3m
   revisionHistoryLimit: 10
+  ignoreDifferences:
+    # Ignore dynamic Cilium resources that are managed by Cilium operator
+    - group: cilium.io
+      kind: CiliumIdentity
+      jsonPointers:
+        - /metadata
+        - /security-labels
+    - group: cilium.io  
+      kind: CiliumEndpoint
+      jsonPointers:
+        - /metadata
+        - /status
