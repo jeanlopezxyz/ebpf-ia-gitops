@@ -18,15 +18,29 @@ check-deps: ## Check if required tools are installed
 	@command -v minikube >/dev/null 2>&1 || { echo "❌ Minikube is not installed"; exit 1; }
 	@echo "✅ All dependencies are installed"
 
-bootstrap: check-deps ## Bootstrap complete infrastructure (Minikube + ArgoCD + Apps)
+bootstrap: check-deps ## Bootstrap complete infrastructure (Minikube + ArgoCD + Auto-deploy Apps)
 	@echo "🚀 Bootstrapping eBPF + AI GitOps environment..."
+	@echo "This will:"
+	@echo "  1. Create Minikube cluster (ebpf-ia profile)"
+	@echo "  2. Install Cilium CNI with eBPF"
+	@echo "  3. Install ArgoCD GitOps"
+	@echo "  4. Auto-create and sync all applications"
+	@echo "  5. Wait for applications to be healthy"
+	@echo ""
 	ansible-galaxy collection install kubernetes.core
 	ansible-playbook -i ansible/inventory/localhost.yml ansible/bootstrap.yml
+	@echo ""
+	@echo "✅ Bootstrap complete! Run 'make port-forward' to access services"
 
-deploy: ## Deploy/update applications via ArgoCD
-	@echo "🔄 Syncing ArgoCD applications..."
-	argocd app sync ebpf-ai
-	argocd app sync ebpf-ai-apps
+deploy: ## Deploy/update applications via ArgoCD (manual sync)
+	@echo "🔄 Manually syncing ArgoCD applications..."
+	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
+	@PORT_PID=$$!; \
+	sleep 5; \
+	argocd login localhost:8080 --username admin --password admin123 --insecure; \
+	argocd app sync ebpf-ai-apps --force; \
+	argocd app sync ebpf-ai --force; \
+	kill $$PORT_PID || true
 
 status: ## Show status of all components
 	@echo "📊 Component Status:"
@@ -67,38 +81,20 @@ port-forward: ## Setup port forwarding for local access
 	@pkill -f "kubectl port-forward" || true
 	@sleep 2
 	@echo "ArgoCD will be available at: http://localhost:8080"
-	@echo "Grafana will be available at: http://localhost:3000"
-	@echo "Prometheus will be available at: http://localhost:9090"
-	@echo "ML Detector API will be available at: http://localhost:5000"
-	@echo "eBPF Monitor metrics will be available at: http://localhost:8800"
-	@echo "Tekton Dashboard will be available at: http://localhost:9097"
-	@echo "Container Registry will be available at: http://localhost:5000"
+	@echo "Note: ArgoCD uses self-signed TLS certificates"
 	@echo ""
-	@echo "Starting port forwards (press Ctrl+C to stop)..."
-	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
-	@kubectl port-forward svc/grafana -n grafana 3000:3000 &
-	@kubectl port-forward svc/prometheus-server -n prometheus 9090:80 &
-	@kubectl port-forward svc/ml-detector -n ebpf-security 5000:5000 &
-	@kubectl port-forward svc/ebpf-monitor -n ebpf-security 8800:8800 &
-	@kubectl port-forward svc/tekton-dashboard -n tekton 9097:9097 &
-	@kubectl port-forward svc/registry -n registry 5001:5000 &
-	@wait
+	@echo "Starting ArgoCD port forward (press Ctrl+C to stop)..."
+	@kubectl port-forward svc/argocd-server -n argocd 8080:80
+	@echo "Note: Other services will be available once applications are deployed via ArgoCD"
 
 dashboard: ## Open Minikube dashboard
 	minikube dashboard --profile ebpf-ia
 
 threats: ## Open threat detection dashboard via port-forward
-	@echo "🚨 Opening eBPF + AI Threat Detection Dashboard..."
-	@echo "Setting up port-forward to Grafana..."
-	@pkill -f "kubectl port-forward.*grafana" || true
-	@sleep 1
-	@kubectl port-forward svc/grafana -n grafana 3000:3000 > /dev/null 2>&1 &
-	@sleep 3
-	@echo "🌐 Grafana available at: http://localhost:3000"
-	@echo "📊 Threat Dashboard: http://localhost:3000/d/threat-detection/ebpf-ai-threat-detection"
-	@echo "🔑 Login: admin / admin123"
-	@echo ""
-	@open "http://localhost:3000" 2>/dev/null || xdg-open "http://localhost:3000" 2>/dev/null || echo "Open manually: http://localhost:3000"
+	@echo "🚨 Threat Detection Dashboard..."
+	@echo "First deploy applications with: make sync"
+	@echo "Then access via ArgoCD: https://localhost:8080"
+	@echo "Login: admin / admin123"
 
 clean: ## Clean up everything (delete cluster and resources)
 	@echo "🧹 Cleaning up eBPF + AI GitOps environment..."
@@ -133,7 +129,7 @@ info: ## Show access information
 	@echo "🔍 eBPF + AI GitOps Access Information:"
 	@echo ""
 	@echo "🌐 NodePort Access (direct via Minikube IP):"
-	@MINIKUBE_IP=$$(minikube ip -p lab-ebpf-ia 2>/dev/null || minikube ip 2>/dev/null || echo 'pending'); \
+	@MINIKUBE_IP=$$(minikube ip -p ebpf-ia 2>/dev/null || echo 'pending'); \
 	echo "  Grafana Dashboard: http://$$MINIKUBE_IP:30300 (admin/admin123)"; \
 	echo "  Container Registry: http://$$MINIKUBE_IP:30050"; \
 	echo "  ArgoCD UI: http://$$MINIKUBE_IP:31055 (admin/admin123)"; \
@@ -166,7 +162,7 @@ info: ## Show access information
 
 nodeport: ## Open NodePort services in browser
 	@echo "🌐 Opening NodePort services..."
-	@MINIKUBE_IP=$$(minikube ip -p lab-ebpf-ia 2>/dev/null || minikube ip 2>/dev/null); \
+	@MINIKUBE_IP=$$(minikube ip -p ebpf-ia 2>/dev/null); \
 	if [ "$$MINIKUBE_IP" != "" ]; then \
 		echo "Opening Grafana Dashboard..."; \
 		open "http://$$MINIKUBE_IP:30300" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:30300" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:30300"; \

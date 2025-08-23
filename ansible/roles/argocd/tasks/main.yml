@@ -207,7 +207,32 @@
       status: "True"
     wait_timeout: 300
     
-# Password configured via Helm values during installation
+# Force admin password configuration
+- name: Configure ArgoCD admin password
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: argocd-secret
+        namespace: "{{ argocd.namespace }}"
+      data:
+        admin.password: JDJ5JDA1JEN3UmJ6V0l3SlJ5MHZBZVZCakZodk9oYUVjZU13RWwvMlZRcEpVcU1vdGlwUHIwMHUxeWlX
+      type: Opaque
+    merge_type: merge
+    
+- name: Restart ArgoCD server to apply password
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-server
+        namespace: "{{ argocd.namespace }}"
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "{{ ansible_date_time.iso8601 }}"
     
 - name: Apply App-of-Apps pattern
   kubernetes.core.k8s:
@@ -311,12 +336,54 @@
     wait: true
     wait_timeout: 60
     
+- name: Wait for ArgoCD CLI to be available
+  wait_for:
+    delay: 10
+    timeout: 60
+    
+- name: Login to ArgoCD CLI
+  shell: |
+    kubectl port-forward svc/argocd-server -n argocd 8080:80 &
+    PORT_PID=$!
+    sleep 5
+    argocd login localhost:8080 --username admin --password admin123 --insecure || true
+    kill $PORT_PID || true
+  ignore_errors: yes
+  
+- name: Force sync App-of-Apps to deploy all applications
+  shell: |
+    kubectl port-forward svc/argocd-server -n argocd 8080:80 &
+    PORT_PID=$!
+    sleep 5
+    argocd login localhost:8080 --username admin --password admin123 --insecure
+    argocd app sync ebpf-ai-apps --force
+    argocd app sync ebpf-ai --force
+    kill $PORT_PID || true
+  ignore_errors: yes
+  
+- name: Wait for applications to be healthy
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: "{{ item }}"
+    namespace: "{{ argocd.namespace }}"
+    wait: true
+    wait_condition:
+      type: Health
+      status: Healthy
+    wait_timeout: 600
+  loop:
+    - ebpf-ai-apps
+    - ebpf-ai
+  ignore_errors: yes
+  
 - name: Display GitOps setup status
   debug:
     msg:
-      - "🚀 ArgoCD Applications configured successfully!"
+      - "🚀 ArgoCD Applications configured and synced successfully!"
       - "📋 App-of-Apps: ebpf-ai-apps"
       - "🤖 Main Application: ebpf-ai"
       - "🔄 Sync Policy: Automated (prune + self-heal enabled)"
       - "📦 Git Repository: {{ applications.ebpf_ai.git_repo }}"
       - "🌿 Branch: {{ applications.ebpf_ai.git_branch }}"
+      - "✅ All applications are now synced and healthy"

@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: enable-csi-hostpath-addon
+  namespace: default
+  annotations:
+    # This job enables the CSI hostpath addon in Minikube
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      serviceAccountName: csi-addon-enabler
+      containers:
+      - name: enable-csi
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Enabling CSI hostpath driver addon..."
+          # Check if running in Minikube
+          if kubectl get nodes -o jsonpath='{.items[0].metadata.name}' | grep -q "minikube\|ebpf-ia"; then
+            echo "Minikube detected, enabling CSI addon..."
+            # Enable CSI hostpath driver addon
+            minikube addons enable csi-hostpath-driver --profile ebpf-ia || echo "CSI addon already enabled or error occurred"
+            
+            # Wait for CSI driver to be ready
+            kubectl wait --for=condition=Available --timeout=300s deployment/csi-hostpathplugin-controller -n kube-system || true
+            echo "CSI addon setup completed"
+          else
+            echo "Not running in Minikube, skipping addon enable"
+          fi
+      restartPolicy: OnFailure
+  backoffLimit: 3
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-addon-enabler
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: csi-addon-enabler
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csi-addon-enabler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: csi-addon-enabler
+subjects:
+- kind: ServiceAccount
+  name: csi-addon-enabler
+  namespace: default

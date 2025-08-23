@@ -8,6 +8,9 @@ metadata:
   labels:
     addonmanager.kubernetes.io/mode: Reconcile
 provisioner: hostpath.csi.k8s.io
-reclaimPolicy: Delete
+reclaimPolicy: Retain  # Keep data for development
 volumeBindingMode: Immediate
-allowVolumeExpansion: false
+allowVolumeExpansion: true  # Allow volume expansion
+parameters:
+  # CSI hostpath specific parameters
+  storageType: hostPath

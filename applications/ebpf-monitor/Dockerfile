@@ -10,8 +10,17 @@ RUN apk add --no-cache git gcc musl-dev linux-headers clang llvm elfutils-dev bp
 # Set working directory
 WORKDIR /app
 
-# Copy source code first
+# Copy source code (with refactored structure)
 COPY . .
+
+# Verify refactored structure for production build
+RUN ls -la pkg/ && \
+    test -d pkg/config && \
+    test -d pkg/metrics && \
+    test -d pkg/ebpf && \
+    test -d pkg/qos && \
+    echo "✅ Refactored Go structure verified" || \
+    (echo "❌ Missing refactored Go packages" && exit 1)
 
 # Download and tidy dependencies
 RUN go mod download && go mod tidy

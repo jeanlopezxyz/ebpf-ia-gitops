@@ -1,60 +1,13 @@
 ---
-- name: Get Minikube driver type
-  command: minikube config get driver --profile {{ minikube.profile }}
-  register: minikube_driver_cmd
-  ignore_errors: yes
-  
-- name: Set driver fact
-  set_fact:
-    minikube_driver: "{{ minikube_driver_cmd.stdout | default('podman') }}"
-    
 - name: Display storage configuration info
   debug:
     msg:
-      - "🗄️  Configuring storage for Minikube driver: {{ minikube_driver }}"
-      - "📊 Available storage options:"
-      - "  - standard: Default Minikube storage (hostPath)"
-      - "  - standard-rwo: ReadWriteOnce volumes"
-      - "  - local-storage: Local persistent volumes"
-
-- name: Enable storage addon for Minikube
-  command: minikube addons enable storage-provisioner --profile {{ minikube.profile }}
-  ignore_errors: yes
-
-- name: Enable volumesnapshots addon (if available)
-  command: minikube addons enable volumesnapshots --profile {{ minikube.profile }}
-  ignore_errors: yes
-
-- name: Create enhanced StorageClass for persistent data
-  kubernetes.core.k8s:
-    definition:
-      apiVersion: storage.k8s.io/v1
-      kind: StorageClass
-      metadata:
-        name: persistent-storage
-        annotations:
-          storageclass.kubernetes.io/is-default-class: "false"
-      provisioner: k8s.io/minikube-hostpath
-      volumeBindingMode: Immediate
-      reclaimPolicy: Retain  # Keep data even if PVC is deleted
-      allowVolumeExpansion: true
-      parameters:
-        type: hostPath
-    state: present
-
+      - "🗄️  Storage setup skipped in bootstrap"
+      - "📦 Storage will be configured later via ArgoCD with hostpath.csi.k8s.io"
 
 - name: Display storage setup results
   debug:
     msg:
-      - "✅ Storage configuration completed!"
-      - "🔧 Minikube Driver: {{ minikube_driver }}"
-      - "📦 StorageClasses created:"
-      - "  - persistent-storage (hostPath, retain policy)"
-      - ""
-      - "💡 Storage Features:"
-      - "  - Retain policy: Data survives PVC deletion"
-      - "  - Volume expansion: Can grow storage if needed"
-      - "{% if minikube_driver == 'docker' %}  - Local storage: Better performance for Docker driver{% endif %}"
-      - ""
-      - "🗂️  Storage Locations:"
-      - "  - hostPath: /tmp/hostpath-provisioner/"
+      - "✅ Storage configuration deferred to ArgoCD!"
+      - "🔧 No storage provisioners enabled to avoid conflicts"
+      - "📦 hostpath.csi.k8s.io will be configured via GitOps"
