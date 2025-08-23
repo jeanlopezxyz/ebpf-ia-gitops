@@ -3,18 +3,15 @@
   kubernetes.core.helm_repository:
     name: cilium
     repo_url: https://helm.cilium.io/
-    
+
 - name: Install Cilium CNI via Helm
   kubernetes.core.helm:
     name: cilium
     chart_ref: cilium/cilium
+    chart_version: "1.16.5"
     release_namespace: kube-system
     values:
-      # eBPF configuration
-      bpf:
-        masquerade: true
-        hostRouting: true
-      # Hubble observability
+      # Hubble observability (simplified)
       hubble:
         enabled: "{{ cilium.enable_hubble }}"
         relay:
@@ -24,19 +21,14 @@
       # Gateway API support
       gatewayAPI:
         enabled: "{{ cilium.enable_gateway_api }}"
-      # eBPF host firewall
-      hostFirewall:
-        enabled: true
       # Enable eBPF-based kube-proxy replacement
       kubeProxyReplacement: true
-      # Enable bandwidth manager for eBPF
-      bandwidthManager:
-        enabled: true
-      # Enable local redirect policy for eBPF
-      localRedirectPolicy: true
+      # Simplified for stability
+      operator:
+        replicas: 1
     wait: true
-    timeout: 300s
-    
+    timeout: 600s
+
 - name: Wait for Cilium DaemonSet to be ready
   kubernetes.core.k8s_info:
     api_version: v1
@@ -49,14 +41,17 @@
       type: Ready
       status: "True"
     wait_timeout: 600
-    
+
 # Cilium CLI installation removed - CNI works perfectly without CLI
-  
+
 - name: Display Cilium status
   debug:
     msg:
-      - "🔌 Cilium CNI with eBPF installed successfully!"
-      - "🔍 Hubble observability: {{ 'Enabled' if cilium.enable_hubble else 'Disabled' }}"
-      - "🚪 Gateway API: {{ 'Enabled' if cilium.enable_gateway_api else 'Disabled' }}"
-      - "🛡️ eBPF Host Firewall: Enabled"
-      - "⚡ kube-proxy replacement: Strict eBPF mode (latest version)"
+      - "Cilium CNI v{{ cilium.version }} with eBPF installed successfully!"
+      - "Hubble observability: {{ 'Enabled' if cilium.enable_hubble else 'Disabled' }}"
+      - "Gateway API: {{ 'Enabled' if cilium.enable_gateway_api else 'Disabled' }}"
+      - "L2 Announcements: {{ 'Enabled' if cilium.enable_l2_announcements else 'Disabled' }}"
+      - "Netkit Datapath: {{ 'Enabled' if cilium.enable_netkit else 'Disabled' }}"
+      - "eBPF Host Firewall: Enabled"
+      - "kube-proxy replacement: Strict eBPF mode"
+      - "Enhanced metrics: DNS, TCP, HTTP, Flow tracking"

@@ -23,10 +23,13 @@ deployment_mode:
 minikube:
   profile: "ebpf-ia"
   nodes: 1
-  memory: "6144"
+  memory: "8192"  # Increased for better performance
   cpus: 4
-  kubernetes_version: "v1.28.3"
-  driver: "{{ 'qemu' if deployment_mode.type == 'prod' else 'podman' }}"  # podman for lab
+  disk_size: "20g"  # Explicit disk size
+  kubernetes_version: "latest"  # Use latest available version (v1.33 series)
+  driver: "{{ 'kvm2' if deployment_mode.type == 'prod' else 'kvm2' }}"  # Use kvm2 for better stability
+  container_runtime: "containerd"  # Modern container runtime
+  wait_timeout: 600  # 10 minutes timeout for cluster startup
   
 # Network configuration
 network:
@@ -37,9 +40,11 @@ network:
   
 # Cilium configuration
 cilium:
-  version: "1.14.5"
+  version: "1.16.5"  # Stable version for Minikube compatibility
   enable_hubble: true
   enable_gateway_api: true
+  enable_l2_announcements: false  # Disabled for stability
+  enable_netkit: false  # Disabled for stability
   
 # ArgoCD configuration
 argocd:

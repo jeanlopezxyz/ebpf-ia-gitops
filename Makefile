@@ -75,17 +75,29 @@ logs: ## Show logs from main components
 	@echo "📋 Recent logs from eBPF Monitor:"
 	kubectl logs -n ebpf-security -l app=ebpf-monitor --tail=20 || echo "❌ eBPF Monitor not found"
 
-port-forward: ## Setup port forwarding for local access
-	@echo "🔗 Setting up port forwarding..."
+port-forward-argocd: ## Setup port forwarding for ArgoCD only
+	@echo "🔗 Setting up port forwarding for ArgoCD..."
 	@echo "Killing existing port forwards..."
 	@pkill -f "kubectl port-forward" || true
 	@sleep 2
-	@echo "ArgoCD will be available at: http://localhost:8080"
-	@echo "Note: ArgoCD uses self-signed TLS certificates"
 	@echo ""
-	@echo "Starting ArgoCD port forward (press Ctrl+C to stop)..."
-	@kubectl port-forward svc/argocd-server -n argocd 8080:80
-	@echo "Note: Other services will be available once applications are deployed via ArgoCD"
+	@echo "🚀 Starting ArgoCD port forward..."
+	@echo "   ArgoCD UI: http://localhost:8080 (admin/admin123)"
+	@kubectl port-forward svc/argocd-server -n argocd 8080:80 >/dev/null 2>&1 &
+	@sleep 2
+	@echo ""
+	@echo "✅ ArgoCD port forward active!"
+	@echo "💡 Use 'pkill -f kubectl port-forward' to stop manually."
+
+port-forward: ## Setup port forwarding for all services
+	./scripts/port-forward.sh
+
+port-stop: ## Stop all port forwards
+	./scripts/port-stop.sh
+
+port-status: ## Show status of port forwards
+	@echo "🔍 Active port forwards:"
+	@ps aux | grep 'kubectl port-forward' | grep -v grep | awk '{print "   " $$11 " " $$12 " " $$13 " " $$14}' || echo "   No active port forwards"
 
 dashboard: ## Open Minikube dashboard
 	minikube dashboard --profile ebpf-ia

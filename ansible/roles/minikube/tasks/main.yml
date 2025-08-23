@@ -4,12 +4,12 @@
   register: profile_list
   failed_when: false
   changed_when: false
-  
+
 - name: Delete existing minikube profile if exists
   command: minikube delete --profile {{ minikube.profile }}
   when: minikube.profile in profile_list.stdout
   ignore_errors: yes
-  
+
 - name: Start minikube cluster
   command: >
     minikube start
@@ -17,23 +17,26 @@
     --nodes={{ minikube.nodes }}
     --memory={{ minikube.memory }}
     --cpus={{ minikube.cpus }}
+    --disk-size={{ minikube.disk_size }}
     --kubernetes-version={{ minikube.kubernetes_version }}
     --driver={{ minikube.driver }}
+    --container-runtime={{ minikube.container_runtime }}
     {% if deployment_mode.type == 'prod' %}--network=bridge --bridge={{ network.bridge_interface }}{% endif %}
-    --cni=false
     --wait=all
   register: minikube_start
-  
+  async: "{{ minikube.wait_timeout }}"
+  poll: 10
+
 - name: Set kubectl context to minikube
   command: kubectl config use-context {{ minikube.profile }}
-  
+
 - name: Wait for cluster to be ready
   command: kubectl get nodes
   register: nodes_ready
   until: '"Ready" in nodes_ready.stdout'
   retries: 30
   delay: 10
-  
+
 - name: Enable minikube addons
   command: minikube addons enable {{ item }} --profile {{ minikube.profile }}
   loop:
@@ -42,7 +45,7 @@
     - storage-provisioner
     - csi-hostpath-driver
   ignore_errors: yes
-  
+
 - name: Display cluster information
   debug:
     msg:
@@ -50,4 +53,9 @@
       - "📊 Nodes: {{ minikube.nodes }}"
       - "💾 Memory: {{ minikube.memory }}MB"
       - "⚡ CPUs: {{ minikube.cpus }}"
+      - "💽 Disk: {{ minikube.disk_size }}"
       - "🔄 Kubernetes: {{ minikube.kubernetes_version }}"
+      - "🚗 Driver: {{ minikube.driver }}"
+      - "📦 Runtime: {{ minikube.container_runtime }}"
+      - "🗄️ CSI Driver: {{ 'Ready' if csi_driver_check.resources else 'Pending' }}"
+      - "📚 Default StorageClass: csi-hostpath-sc (fsGroup compatible)"

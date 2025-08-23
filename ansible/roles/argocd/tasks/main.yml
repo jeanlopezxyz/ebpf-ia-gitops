@@ -190,7 +190,7 @@
 - name: Build Helm chart dependencies for eBPF AI
   command: helm dependency build
   args:
-    chdir: "/Users/jeanlopez/ebpf-ia-gitops/helm/charts/ebpf-ai"
+    chdir: "{{ playbook_dir }}/../helm/charts/ebpf-ai"
   register: helm_deps
   changed_when: helm_deps.rc == 0
 
