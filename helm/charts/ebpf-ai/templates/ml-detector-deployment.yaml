@@ -37,7 +37,7 @@ spec:
       {{- if .Values.mlDetector.persistence.enabled }}
       initContainers:
       - name: setup-data-permissions
-        image: busybox:latest
+        image: registry.k8s.io/pause:3.9
         command: ['sh', '-c']
         args:
         - |

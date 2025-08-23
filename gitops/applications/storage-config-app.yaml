@@ -6,7 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: storage-config
     app.kubernetes.io/part-of: ebpf-ai-platform
-    app.kubernetes.io/component: storage-management
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -26,12 +25,10 @@ spec:
       allowEmpty: false
     syncOptions:
       - CreateNamespace=true
-      - PrunePropagationPolicy=foreground
-      - PruneLast=true
     retry:
-      limit: 5
+      limit: 3
       backoff:
         duration: 5s
         factor: 2
-        maxDuration: 3m
-  revisionHistoryLimit: 10
+        maxDuration: 1m
+  revisionHistoryLimit: 5

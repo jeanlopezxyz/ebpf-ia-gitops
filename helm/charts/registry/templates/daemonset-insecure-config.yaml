@@ -22,7 +22,7 @@ spec:
       hostNetwork: true
       containers:
       - name: insecure-config
-        image: alpine:latest
+        image: gcr.io/distroless/static:nonroot
         command:
         - sh
         - -c

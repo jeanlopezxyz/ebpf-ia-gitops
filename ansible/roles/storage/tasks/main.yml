@@ -1,13 +1,28 @@
 ---
-- name: Display storage configuration info
-  debug:
-    msg:
-      - "🗄️  No storage provisioner configured in bootstrap"
-      - "📦 Applications must handle their own storage needs"
+- name: Enable storage addon for Minikube
+  command: minikube addons enable storage-provisioner --profile {{ minikube.profile }}
+  ignore_errors: yes
+
+- name: Create enhanced StorageClass for persistent data  
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: persistent-storage
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "false"
+      provisioner: k8s.io/minikube-hostpath
+      volumeBindingMode: Immediate
+      reclaimPolicy: Retain
+      allowVolumeExpansion: true
+      parameters:
+        type: hostPath
+    state: present
 
 - name: Display storage setup results
   debug:
     msg:
-      - "✅ Storage configuration skipped completely!"
-      - "🔧 No storage provisioners enabled"
-      - "📦 Applications responsible for storage configuration"
+      - "✅ Storage configuration completed!"
+      - "📦 StorageClass: persistent-storage (hostPath, retain policy)"
+      - "🔧 Provisioner: k8s.io/minikube-hostpath"

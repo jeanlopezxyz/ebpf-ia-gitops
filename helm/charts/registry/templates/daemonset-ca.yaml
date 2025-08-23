@@ -23,7 +23,7 @@ spec:
       hostNetwork: true
       containers:
       - name: ca-installer
-        image: alpine:latest
+        image: gcr.io/distroless/static:nonroot
         command:
         - sh
         - -c
