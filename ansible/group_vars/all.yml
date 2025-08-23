@@ -22,11 +22,11 @@ deployment_mode:
 # Minikube configuration
 minikube:
   profile: "ebpf-ia"
-  nodes: 3
-  memory: "4096"
-  cpus: 2
+  nodes: 1
+  memory: "6144"
+  cpus: 4
   kubernetes_version: "v1.28.3"
-  driver: "{{ 'qemu' if deployment_mode.type == 'prod' else 'podman' }}"  # qemu for prod bridge, podman for lab
+  driver: "{{ 'qemu' if deployment_mode.type == 'prod' else 'podman' }}"  # podman for lab
   
 # Network configuration
 network:

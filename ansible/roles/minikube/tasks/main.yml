@@ -42,6 +42,10 @@
     - csi-hostpath-driver
   ignore_errors: yes
   
+- name: Disable default storage provisioner to avoid conflicts
+  command: minikube addons disable storage-provisioner --profile {{ minikube.profile }}
+  ignore_errors: yes
+  
 - name: Display cluster information
   debug:
     msg:

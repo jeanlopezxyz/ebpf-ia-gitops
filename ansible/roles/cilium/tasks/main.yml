@@ -8,7 +8,6 @@
   kubernetes.core.helm:
     name: cilium
     chart_ref: cilium/cilium
-    chart_version: "{{ cilium.version }}"
     release_namespace: kube-system
     values:
       # eBPF configuration
@@ -60,4 +59,4 @@
       - "🔍 Hubble observability: {{ 'Enabled' if cilium.enable_hubble else 'Disabled' }}"
       - "🚪 Gateway API: {{ 'Enabled' if cilium.enable_gateway_api else 'Disabled' }}"
       - "🛡️ eBPF Host Firewall: Enabled"
-      - "⚡ kube-proxy replacement: Strict eBPF mode"
+      - "⚡ kube-proxy replacement: Strict eBPF mode (latest version)"

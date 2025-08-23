@@ -2,12 +2,12 @@
 - name: Display storage configuration info
   debug:
     msg:
-      - "🗄️  Storage setup skipped in bootstrap"
-      - "📦 Storage will be configured later via ArgoCD with hostpath.csi.k8s.io"
+      - "🗄️  No storage provisioner configured in bootstrap"
+      - "📦 Applications must handle their own storage needs"
 
 - name: Display storage setup results
   debug:
     msg:
-      - "✅ Storage configuration deferred to ArgoCD!"
-      - "🔧 No storage provisioners enabled to avoid conflicts"
-      - "📦 hostpath.csi.k8s.io will be configured via GitOps"
+      - "✅ Storage configuration skipped completely!"
+      - "🔧 No storage provisioners enabled"
+      - "📦 Applications responsible for storage configuration"

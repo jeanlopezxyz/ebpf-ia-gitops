@@ -26,13 +26,13 @@
       include_role:
         name: cilium
         
+    - name: Wait for Cilium to fully stabilize kube-proxy replacement
+      wait_for:
+        timeout: 60
+        
     - name: Setup Storage Classes
       include_role:
         name: storage
-        
-    - name: Install NGINX Ingress Controller
-      include_role:
-        name: ingress-nginx
         
     - name: Install ArgoCD GitOps
       include_role:
