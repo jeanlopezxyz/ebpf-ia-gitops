@@ -22,11 +22,13 @@ spec:
       hostNetwork: true
       containers:
       - name: insecure-config
-        image: gcr.io/distroless/static:nonroot
+        image: alpine:3.18
         command:
         - sh
         - -c
         - |
+          # Install required tools
+          apk add --no-cache util-linux
           echo "🔧 Configuring Docker daemon to trust insecure registry..."
           
           # Configure Docker daemon.json
