@@ -21,6 +21,26 @@ spec:
           value: "100m"
         - name: controller.resources.requests.memory
           value: "256Mi"
+        - name: controller.resources.limits.cpu
+          value: "500m"
+        - name: controller.resources.limits.memory
+          value: "512Mi"
+        - name: eventsController.resources.requests.cpu
+          value: "100m"
+        - name: eventsController.resources.requests.memory
+          value: "256Mi"
+        - name: eventsController.resources.limits.cpu
+          value: "500m"
+        - name: eventsController.resources.limits.memory
+          value: "512Mi"
+        - name: webhook.resources.requests.cpu
+          value: "100m"
+        - name: webhook.resources.requests.memory
+          value: "256Mi"
+        - name: webhook.resources.limits.cpu
+          value: "500m"
+        - name: webhook.resources.limits.memory
+          value: "512Mi"
         - name: namespace.name
           value: "tekton"
         - name: namespace.create
