@@ -23,30 +23,6 @@ spec:
           labels:
             pod-security.kubernetes.io/enforce: "privileged"
             app.kubernetes.io/part-of: "tekton"
-        controller:
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "256Mi"
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
-        webhook:
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "256Mi"
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
-        remoteresolver:
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "100Mi"
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton
