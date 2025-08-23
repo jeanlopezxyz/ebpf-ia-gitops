@@ -19,7 +19,7 @@ persistence:
   enabled: true
   existingClaim: ""
   storageClass: "csi-hostpath-sc"
-  size: 20Gi
+  size: 5Gi  # Adjusted for Minikube tmpfs constraints
 
 resources: {}
   # limits:
