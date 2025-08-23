@@ -9,7 +9,7 @@ import threading
 import time
 import os
 from collections import deque
-from typing import Dict, List, Deque
+from typing import Dict, List, Deque, Tuple
 import numpy as np
 
 from models.base import DetectionResult

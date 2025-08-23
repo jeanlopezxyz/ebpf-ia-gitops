@@ -1,6 +1,6 @@
 Flask==2.3.3
 numpy==1.24.3
-scikit-learn==1.3.0
+scikit-learn[text]==1.3.0
 joblib==1.3.2
 prometheus-client==0.17.1
 requests==2.31.0
@@ -9,4 +9,4 @@ pydantic==1.10.12
 tensorflow==2.13.0
 keras==2.13.1
 scipy==1.11.1
-scikit-learn[text]==1.3.0
+pandas==2.0.3

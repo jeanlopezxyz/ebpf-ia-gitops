@@ -4,10 +4,13 @@ FROM docker.io/library/python:3.11-slim
 LABEL maintainer="eBPF AI Team"
 LABEL description="ML-based threat detection for eBPF security"
 
-# Install system dependencies for ML libraries
+# Install system dependencies for advanced ML libraries (TensorFlow, DBSCAN, etc.)
 RUN apt-get update && apt-get install -y \
     curl \
     libgomp1 \
+    build-essential \
+    libhdf5-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -17,8 +20,17 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code (refactored structure)
 COPY . .
+
+# Verify refactored structure is present
+RUN ls -la && \
+    test -f constants.py && \
+    test -f threat_detector.py && \
+    test -d models && \
+    test -d rules && \
+    echo "✅ Refactored structure verified" || \
+    (echo "❌ Missing refactored files" && exit 1)
 
 # Create directory for ML models
 RUN mkdir -p /tmp/models

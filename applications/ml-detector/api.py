@@ -27,7 +27,11 @@ def create_api(detector: ThreatDetector) -> Blueprint:
                 "status": "healthy",
                 "service": "ml-detector",
                 "version": "2.0.0",
-                "models_trained": detector.is_trained,
+                "models_trained": {
+                    "spatial": detector.spatial_detector.is_trained(),
+                    "temporal": detector.temporal_detector.is_trained(),
+                    "statistical": detector.statistical_detector.is_trained()
+                },
             }
         )
 
@@ -100,10 +104,13 @@ def create_api(detector: ThreatDetector) -> Blueprint:
     def stats() -> Response:
         return jsonify(
             {
-                "models_trained": detector.is_trained,
-                "training_samples": len(detector.training_window),
-                "kmeans_clusters": getattr(detector.kmeans, "n_clusters", 0),
-                "thresholds": detector.thresholds,
+                "models_trained": {
+                    "spatial": detector.spatial_detector.is_trained(),
+                    "temporal": detector.temporal_detector.is_trained(),
+                    "statistical": detector.statistical_detector.is_trained()
+                },
+                "training_samples": len(getattr(detector, 'all_data_window', [])),
+                "high_confidence_samples": len(getattr(detector, 'high_confidence_window', [])),
             }
         )
 
