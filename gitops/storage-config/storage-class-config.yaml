@@ -1,0 +1,84 @@
+---
+# Job to configure StorageClass annotations declaratively
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: storage-class-configurator
+  namespace: default
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      serviceAccountName: storage-admin
+      containers:
+      - name: configure-storage
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "🔧 Configuring StorageClass declaratively..."
+          
+          # Remove default annotation from 'standard' storage class
+          echo "Removing default from 'standard' storage class..."
+          kubectl annotate storageclass standard storageclass.kubernetes.io/is-default-class- || true
+          
+          # Set csi-hostpath-sc as default
+          echo "Setting csi-hostpath-sc as default..."
+          if kubectl get storageclass csi-hostpath-sc >/dev/null 2>&1; then
+            kubectl annotate storageclass csi-hostpath-sc storageclass.kubernetes.io/is-default-class=true --overwrite
+            kubectl label storageclass csi-hostpath-sc app.kubernetes.io/managed-by=argocd --overwrite
+            echo "✅ StorageClass csi-hostpath-sc configured as default"
+            
+            # Verify configuration
+            echo "🔍 Verifying configuration..."
+            kubectl get storageclass csi-hostpath-sc -o jsonpath='{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}'
+            echo ""
+            kubectl get storageclass
+          else
+            echo "❌ StorageClass csi-hostpath-sc not found"
+            echo "Available StorageClasses:"
+            kubectl get storageclass
+            exit 1
+          fi
+      restartPolicy: OnFailure
+  backoffLimit: 3
+---
+# ServiceAccount for storage operations
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: storage-admin
+  namespace: default
+---
+# ClusterRole for storage management
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: storage-admin
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["csidrivers", "storageclasses"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: storage-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: storage-admin
+subjects:
+- kind: ServiceAccount
+  name: storage-admin
+  namespace: default
