@@ -16,39 +16,37 @@ spec:
     chart: tekton-pipeline
     targetRevision: 1.2.0
     helm:
-      parameters:
-        - name: controller.resources.requests.cpu
-          value: "100m"
-        - name: controller.resources.requests.memory
-          value: "256Mi"
-        - name: controller.resources.limits.cpu
-          value: "500m"
-        - name: controller.resources.limits.memory
-          value: "512Mi"
-        - name: eventsController.resources.requests.cpu
-          value: "100m"
-        - name: eventsController.resources.requests.memory
-          value: "256Mi"
-        - name: eventsController.resources.limits.cpu
-          value: "500m"
-        - name: eventsController.resources.limits.memory
-          value: "512Mi"
-        - name: webhook.resources.requests.cpu
-          value: "100m"
-        - name: webhook.resources.requests.memory
-          value: "256Mi"
-        - name: webhook.resources.limits.cpu
-          value: "500m"
-        - name: webhook.resources.limits.memory
-          value: "512Mi"
-        - name: namespace.name
-          value: "tekton"
-        - name: namespace.create
-          value: "true"
-        - name: namespace.labels.pod-security\.kubernetes\.io/enforce
-          value: "privileged"
-        - name: namespace.labels.app\.kubernetes\.io/part-of
-          value: "tekton"
+      values:
+        namespace:
+          name: "tekton"
+          create: true
+          labels:
+            pod-security.kubernetes.io/enforce: "privileged"
+            app.kubernetes.io/part-of: "tekton"
+        controller:
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+        webhook:
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+        remoteresolver:
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "100Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton
