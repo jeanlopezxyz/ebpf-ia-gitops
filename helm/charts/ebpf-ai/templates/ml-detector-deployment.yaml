@@ -37,7 +37,7 @@ spec:
       {{- if .Values.mlDetector.persistence.enabled }}
       initContainers:
       - name: setup-data-permissions
-        image: registry.k8s.io/pause:3.9
+        image: alpine:3.18
         command: ['sh', '-c']
         args:
         - |
