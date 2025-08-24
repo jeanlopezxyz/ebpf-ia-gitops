@@ -9,7 +9,7 @@ prometheus:
     persistentVolume:
       enabled: true
       size: 5Gi  # Increased for longer metric retention
-      storageClass: "csi-hostpath-sc"
+      storageClass: "local-path"
     service:
       type: ClusterIP
       port: 80
@@ -112,7 +112,7 @@ alertmanager:
   enabled: true
   persistence:
     size: 2Gi
-    storageClass: "csi-hostpath-sc"
+    storageClass: "local-path"
   podSecurityContext:
     runAsUser: 65534
     runAsNonRoot: true

@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ebpf-ai-apps
+  name: app-of-apps
   namespace: argocd
   labels:
-    app.kubernetes.io/name: ebpf-ai-apps
+    app.kubernetes.io/name: app-of-apps
     app.kubernetes.io/part-of: ebpf-ai-system
     app.kubernetes.io/component: argocd-app
 spec:

@@ -33,7 +33,7 @@ mlDetector:
   persistence:
     enabled: true
     size: 1Gi
-    storageClass: "csi-hostpath-sc"  # Use CSI storage class with fsGroup support
+    storageClass: "local-path"  # Local path provisioner for single node
       
   env:
     - name: MODEL_PATH
@@ -264,7 +264,7 @@ metrics:
 # Storage Configuration
 persistence:
   enabled: true
-  storageClass: "standard"
+  storageClass: "local-path"
   size: 5Gi
   accessMode: ReadWriteOnce
 

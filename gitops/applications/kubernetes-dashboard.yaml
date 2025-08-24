@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubernetes-dashboard
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/part-of: ebpf-ai-system
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes.github.io/dashboard
+    targetRevision: "7.10.0"
+    chart: kubernetes-dashboard
+    helm:
+      parameters:
+        - name: protocolHttp
+          value: "false"
+        - name: service.type
+          value: "ClusterIP"
+        - name: extraArgs[0]
+          value: "--enable-insecure-login"
+        - name: extraArgs[1]
+          value: "--enable-skip-login"
+        - name: settings.clusterName
+          value: "ebpf-kvm-cluster"
+        - name: settings.itemsPerPage
+          value: "20"
+        - name: metrics-server.enabled
+          value: "true"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubernetes-dashboard
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10

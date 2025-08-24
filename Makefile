@@ -52,7 +52,7 @@ deploy: ## Deploy/update applications via ArgoCD (manual sync)
 	@PORT_PID=$$!; \
 	sleep 5; \
 	argocd login localhost:8080 --username admin --password admin123 --insecure; \
-	argocd app sync ebpf-ai-apps --force; \
+	argocd app sync app-of-apps --force; \
 	argocd app sync ebpf-ai --force; \
 	kill $$PORT_PID || true
 
@@ -80,7 +80,7 @@ status: ## Show status of all components
 sync: ## Force sync all ArgoCD applications
 	@echo "🔄 Force syncing all applications..."
 	argocd app sync ebpf-ai --force
-	argocd app sync ebpf-ai-apps --force
+	argocd app sync app-of-apps --force
 
 logs: ## Show logs from main components
 	@echo "📋 Recent logs from ML Detector:"

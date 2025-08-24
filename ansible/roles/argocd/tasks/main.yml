@@ -131,41 +131,7 @@
                     number: 443
     state: present
 
-- name: Create Kubernetes Dashboard Ingress
-  kubernetes.core.k8s:
-    definition:
-      apiVersion: networking.k8s.io/v1
-      kind: Ingress
-      metadata:
-        name: kubernetes-dashboard-ingress
-        namespace: kubernetes-dashboard
-        annotations:
-          nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-          nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-      spec:
-        ingressClassName: nginx
-        rules:
-        - host: dashboard.local
-          http:
-            paths:
-            - path: /
-              pathType: Prefix
-              backend:
-                service:
-                  name: kubernetes-dashboard
-                  port:
-                    number: 443
-        - http:
-            paths:
-            - path: /dashboard
-              pathType: Prefix
-              backend:
-                service:
-                  name: kubernetes-dashboard
-                  port:
-                    number: 443
-    state: present
+# Kubernetes Dashboard will be managed by ArgoCD as an application
   
 - name: Display ArgoCD access information
   debug:
@@ -241,10 +207,10 @@
       apiVersion: argoproj.io/v1alpha1
       kind: Application
       metadata:
-        name: ebpf-ai-apps
+        name: app-of-apps
         namespace: "{{ argocd.namespace }}"
         labels:
-          app.kubernetes.io/name: ebpf-ai-apps
+          app.kubernetes.io/name: app-of-apps
           app.kubernetes.io/part-of: ebpf-ai-system
       spec:
         project: default
@@ -271,119 +237,62 @@
               factor: 2
               maxDuration: 3m
               
-- name: Create eBPF AI Application
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: ebpf-ai
-        namespace: "{{ argocd.namespace }}"
-        labels:
-          app.kubernetes.io/name: ebpf-ai
-          app.kubernetes.io/part-of: ebpf-ai-system
-        finalizers:
-          - resources-finalizer.argocd.argoproj.io
-      spec:
-        project: default
-        source:
-          repoURL: "{{ applications.ebpf_ai.git_repo }}"
-          targetRevision: "{{ applications.ebpf_ai.git_branch }}"
-          path: "{{ applications.ebpf_ai.git_path }}"
-          helm:
-            valueFiles:
-              - values.yaml
-            parameters:
-              - name: global.namespace
-                value: "{{ applications.ebpf_ai.namespace }}"
-              - name: mlDetector.replicaCount
-                value: "{{ resources.ml_detector.replicas }}"
-              - name: autoscaling.enabled
-                value: "true"
-              - name: redis.enabled
-                value: "true"
-              - name: prometheus.enabled
-                value: "true"
-              - name: grafana.enabled
-                value: "true"
-        destination:
-          server: https://kubernetes.default.svc
-          namespace: "{{ applications.ebpf_ai.namespace }}"
-        syncPolicy:
-          automated:
-            prune: true
-            selfHeal: true
-            allowEmpty: false
-          syncOptions:
-            - CreateNamespace=true
-            - PrunePropagationPolicy=foreground
-            - PruneLast=true
-          retry:
-            limit: 5
-            backoff:
-              duration: 5s
-              factor: 2
-              maxDuration: 3m
-        revisionHistoryLimit: 10
-        
-- name: Wait for ArgoCD application to be created
+# All individual applications are defined in gitops/applications/
+# They will be automatically created by the App-of-Apps pattern
+
+- name: Wait for App-of-Apps to be created
   kubernetes.core.k8s_info:
     api_version: argoproj.io/v1alpha1
     kind: Application
-    name: ebpf-ai
+    name: app-of-apps
     namespace: "{{ argocd.namespace }}"
     wait: true
     wait_timeout: 60
-    
-- name: Wait for ArgoCD CLI to be available
-  wait_for:
-    delay: 10
-    timeout: 60
-    
-- name: Login to ArgoCD CLI
-  shell: |
-    kubectl port-forward svc/argocd-server -n argocd 8080:80 &
-    PORT_PID=$!
-    sleep 5
-    argocd login localhost:8080 --username admin --password admin123 --insecure || true
-    kill $PORT_PID || true
-  ignore_errors: yes
-  
-- name: Force sync App-of-Apps to deploy all applications
-  shell: |
-    kubectl port-forward svc/argocd-server -n argocd 8080:80 &
-    PORT_PID=$!
-    sleep 5
-    argocd login localhost:8080 --username admin --password admin123 --insecure
-    argocd app sync ebpf-ai-apps --force
-    argocd app sync ebpf-ai --force
-    kill $PORT_PID || true
-  ignore_errors: yes
-  
-- name: Wait for applications to be healthy
+  register: app_of_apps
+
+- name: Pause to let ArgoCD process the App-of-Apps
+  pause:
+    seconds: 15
+
+- name: Get list of all applications created by App-of-Apps
   kubernetes.core.k8s_info:
     api_version: argoproj.io/v1alpha1
     kind: Application
-    name: "{{ item }}"
     namespace: "{{ argocd.namespace }}"
-    wait: true
-    wait_condition:
-      type: Health
-      status: Healthy
-    wait_timeout: 600
-  loop:
-    - ebpf-ai-apps
-    - ebpf-ai
-  ignore_errors: yes
+  register: all_apps
+
+- name: Trigger sync for all applications
+  shell: |
+    # Force sync all applications to ensure they start deploying
+    for app in $(kubectl get applications -n {{ argocd.namespace }} -o name); do
+      echo "Syncing $app"
+      kubectl patch $app -n {{ argocd.namespace }} --type='json' \
+        -p='[{"op": "replace", "path": "/spec/syncPolicy/automated", "value": {"prune": true, "selfHeal": true}}]' || true
+    done
+  when: all_apps.resources | length > 0
+
+- name: Display applications being deployed
+  debug:
+    msg:
+      - "Applications found: {{ all_apps.resources | map(attribute='metadata.name') | list }}"
+      - "Total: {{ all_apps.resources | length }} applications"
+  when: all_apps.resources | length > 0
   
+- name: Get final status of all applications
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    namespace: "{{ argocd.namespace }}"
+  register: final_apps
+
 - name: Display GitOps setup status
   debug:
     msg:
       - "🚀 ArgoCD Applications configured and synced successfully!"
-      - "📋 App-of-Apps: ebpf-ai-apps"
+      - "📋 App-of-Apps: app-of-apps"
       - "🤖 Main Application: ebpf-ai"
       - "🔄 Sync Policy: Automated (prune + self-heal enabled)"
       - "📦 Git Repository: {{ applications.ebpf_ai.git_repo }}"
       - "🌿 Branch: {{ applications.ebpf_ai.git_branch }}"
-      - "✅ All applications are now synced and healthy"
+      - "📊 Total Applications: {{ final_apps.resources | length }}"
+      - "✅ Bootstrap complete! Applications will continue syncing in background"

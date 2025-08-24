@@ -38,13 +38,18 @@ minikube:
 kubeadm:
   node_name: "ebpf-kvm-node"
   kubernetes_version: "v1.33.1"  # Latest stable Kubernetes version (August 2025)
-  pod_network_cidr: "10.244.0.0/16"
-  service_cidr: "10.96.0.0/12"
+  pod_network_cidr: "10.244.0.0/16"  # Pod network (65K IPs)
+  service_cidr: "10.96.0.0/12"       # Service network (1M IPs)
   vm:
     memory: "12288"  # 12GB RAM
     cpus: 4
     disk_size: "60g"
     network_bridge: "virbr0"  # Default libvirt bridge
+    static_ip: "192.168.122.100"  # Fixed IP for the VM
+    gateway: "192.168.122.1"      # Default libvirt gateway
+    dns_servers:
+      - "8.8.8.8"
+      - "8.8.4.4"
   
 # Network configuration
 network:

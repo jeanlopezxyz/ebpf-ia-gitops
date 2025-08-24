@@ -7,6 +7,8 @@
     minikube_profile: "ebpf-ia"
     kubernetes_namespace: "ebpf-security"
     argocd_namespace: "argocd"
+  environment:
+    KUBECONFIG: "{{ ansible_env.HOME }}/.kube/config{% if cluster_method == 'kubeadm' %}-kubeadm{% endif %}"
     
   tasks:
     - name: Check prerequisites

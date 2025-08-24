@@ -1,4 +1,13 @@
 ---
+- name: Check if SSH key exists
+  stat:
+    path: ~/.ssh/kubeadm_kvm_key
+  register: ssh_key_stat
+
+- name: Create SSH key for KVM access if not exists
+  shell: ssh-keygen -t ed25519 -f ~/.ssh/kubeadm_kvm_key -N "" -C "kubeadm-kvm-access"
+  when: not ssh_key_stat.stat.exists
+
 - name: Install required packages for KVM and Kubernetes (Fedora)
   dnf:
     name:
@@ -11,6 +20,8 @@
       - curl
       - ca-certificates
       - gnupg2
+      - cloud-utils
+      - genisoimage
     state: present
   become: yes
   when: ansible_os_family == "RedHat"
@@ -27,6 +38,8 @@
       - ca-certificates
       - gnupg
       - lsb-release
+      - cloud-image-utils
+      - genisoimage
     state: present
   become: yes
   when: ansible_os_family == "Debian"
@@ -38,87 +51,216 @@
     enabled: yes
   become: yes
 
-- name: Download Ubuntu Server ISO if not exists
+- name: Add current user to libvirt group
+  user:
+    name: "{{ ansible_user_id | default(lookup('env', 'USER')) }}"
+    groups: libvirt
+    append: yes
+  become: yes
+  ignore_errors: yes
+
+- name: Ensure default network is active
+  shell: |
+    virsh net-list --all | grep -q default || virsh net-define /usr/share/libvirt/networks/default.xml
+    virsh net-list --inactive | grep -q default && virsh net-start default
+    virsh net-autostart default
+  become: yes
+  ignore_errors: yes
+
+- name: Check if VM already exists
+  shell: virsh list --all --name | grep -q "^{{ kubeadm.node_name }}$"
+  register: vm_exists
+  ignore_errors: yes
+  become: yes
+
+- name: Remove existing VM if present
+  shell: |
+    virsh destroy {{ kubeadm.node_name }} || true
+    virsh undefine {{ kubeadm.node_name }} --remove-all-storage || true
+  when: vm_exists.rc == 0
+  become: yes
+
+- name: Download Ubuntu Cloud Image
   get_url:
-    url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso"
-    dest: "/tmp/ubuntu-24.04.3-live-server-amd64.iso"
+    url: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    dest: "/tmp/ubuntu-24.04-cloud.img"
     mode: '0644'
   become: yes
 
-- name: Generate preseed file
-  template:
-    src: preseed.cfg.j2
-    dest: /tmp/preseed.cfg
-    mode: '0644'
+- name: Create VM disk from cloud image
+  shell: |
+    qemu-img create -f qcow2 -F qcow2 -b /tmp/ubuntu-24.04-cloud.img /var/lib/libvirt/images/{{ kubeadm.node_name }}.qcow2 {{ kubeadm.vm.disk_size }}
+    qemu-img resize /var/lib/libvirt/images/{{ kubeadm.node_name }}.qcow2 {{ kubeadm.vm.disk_size }}
   become: yes
 
-- name: Create KVM virtual machine with Ubuntu ISO
+- name: Read SSH public key
+  shell: cat ~/.ssh/kubeadm_kvm_key.pub
+  register: ssh_public_key_content
+  changed_when: false
+
+- name: Create cloud-init user-data
+  copy:
+    content: |
+      #cloud-config
+      hostname: {{ kubeadm.node_name }}
+      manage_etc_hosts: true
+      users:
+        - name: ubuntu
+          sudo: ALL=(ALL) NOPASSWD:ALL
+          groups: users, admin
+          shell: /bin/bash
+          lock_passwd: false
+          ssh_authorized_keys:
+            - {{ ssh_public_key_content.stdout }}
+      ssh_pwauth: false
+      disable_root: false
+      packages:
+        - curl
+        - ca-certificates
+        - gnupg
+        - lsb-release
+        - apt-transport-https
+        - openssh-server
+      runcmd:
+        - systemctl disable --now ufw
+        - swapoff -a
+        - sed -i '/ swap / s/^/#/' /etc/fstab
+        - systemctl enable ssh
+        - systemctl start ssh
+        - |  
+          cat > /etc/netplan/01-netcfg.yaml << EOF
+          network:
+            version: 2
+            ethernets:
+              enp1s0:
+                dhcp4: no
+                addresses:
+                  - {{ kubeadm.vm.static_ip }}/24
+                gateway4: {{ kubeadm.vm.gateway }}
+                nameservers:
+                  addresses:
+                    - 8.8.8.8
+                    - 8.8.4.4
+          EOF
+        - netplan apply
+    dest: /tmp/user-data
+  become: yes
+
+- name: Create cloud-init meta-data
+  copy:
+    content: |
+      instance-id: {{ kubeadm.node_name }}
+      local-hostname: {{ kubeadm.node_name }}
+    dest: /tmp/meta-data
+  become: yes
+
+- name: Create cloud-init ISO
+  shell: |
+    genisoimage -output /tmp/cloud-init.iso -volid cidata -joliet -rock /tmp/user-data /tmp/meta-data
+  become: yes
+
+- name: Create KVM virtual machine with cloud image
   shell: |
     virt-install \
       --name {{ kubeadm.node_name }} \
       --memory {{ kubeadm.vm.memory }} \
       --vcpus {{ kubeadm.vm.cpus }} \
-      --disk size={{ kubeadm.vm.disk_size | regex_replace('g', '') }} \
-      --os-variant ubuntu24.04 \
-      --network bridge={{ kubeadm.vm.network_bridge }} \
+      --disk /var/lib/libvirt/images/{{ kubeadm.node_name }}.qcow2,device=disk \
+      --disk /tmp/cloud-init.iso,device=cdrom \
+      --os-variant ubuntu22.04 \
+      --network network=default \
       --graphics none \
       --console pty,target_type=serial \
-      --cdrom /tmp/ubuntu-24.04.3-live-server-amd64.iso \
-      --wait 15 \
-      --noautoconsole
+      --noautoconsole \
+      --import
   become: yes
   register: vm_create
-  changed_when: vm_create.rc == 0
 
-- name: Wait for VM to be accessible via SSH
+- name: Wait for VM to boot
+  pause:
+    seconds: 30
+
+- name: Set VM IP variable (using static IP)
+  set_fact:
+    kubeadm_vm_ip: "{{ kubeadm.vm.static_ip }}"
+
+- name: Display VM IP
+  debug:
+    msg: "VM IP Address: {{ kubeadm_vm_ip }}"
+
+- name: Wait for SSH to be available
   wait_for:
     host: "{{ kubeadm_vm_ip }}"
     port: 22
-    delay: 30
+    delay: 10
     timeout: 300
 
-- name: Install Docker and kubeadm on VM
+- name: Install containerd and Kubernetes components
   shell: |
-    ssh root@{{ kubeadm_vm_ip }} << 'EOF'
-    # Install Docker
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    # Install Kubernetes
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
-    
+    ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no -i ~/.ssh/kubeadm_kvm_key ubuntu@{{ kubeadm_vm_ip }} 'sudo bash -s' << 'EOF'
+    # Update system
     apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io kubelet kubeadm kubectl
+    apt-get upgrade -y
     
-    # Configure containerd
+    # Install containerd
+    apt-get install -y containerd
     mkdir -p /etc/containerd
     containerd config default | tee /etc/containerd/config.toml
     sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
     systemctl restart containerd
     systemctl enable containerd
     
-    # Initialize cluster
-    kubeadm init --pod-network-cidr={{ kubeadm.pod_network_cidr }} --service-cidr={{ kubeadm.service_cidr }} --kubernetes-version={{ kubeadm.kubernetes_version }}
+    # Configure kernel modules
+    cat <<EOT | tee /etc/modules-load.d/k8s.conf
+    overlay
+    br_netfilter
+    EOT
     
-    # Configure kubectl for root
-    mkdir -p /root/.kube
-    cp -i /etc/kubernetes/admin.conf /root/.kube/config
-    chown root:root /root/.kube/config
+    modprobe overlay
+    modprobe br_netfilter
+    
+    # Configure sysctl
+    cat <<EOT | tee /etc/sysctl.d/k8s.conf
+    net.bridge.bridge-nf-call-iptables  = 1
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.ipv4.ip_forward                 = 1
+    EOT
+    
+    sysctl --system
+    
+    # Install Kubernetes
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+    
+    apt-get update
+    apt-get install -y kubelet kubeadm kubectl
+    apt-mark hold kubelet kubeadm kubectl
+    
+    # Initialize cluster
+    kubeadm init --pod-network-cidr={{ kubeadm.pod_network_cidr }} --service-cidr={{ kubeadm.service_cidr }} --apiserver-advertise-address={{ kubeadm.vm.static_ip }}
+    
+    # Configure kubectl for ubuntu user
+    mkdir -p /home/ubuntu/.kube
+    cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
+    chown ubuntu:ubuntu /home/ubuntu/.kube/config
     
     # Remove master taint for single-node cluster
-    kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+    export KUBECONFIG=/etc/kubernetes/admin.conf
+    kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
     
     echo "✅ Kubeadm cluster initialized successfully"
     EOF
   register: kubeadm_init
+  retries: 2
+  delay: 10
   
 - name: Copy kubeconfig to local machine
   shell: |
-    scp root@{{ kubeadm_vm_ip }}:/root/.kube/config /tmp/kubeadm-config
-    export KUBECONFIG=/tmp/kubeadm-config
-    kubectl config set-cluster kubernetes --server=https://{{ kubeadm_vm_ip }}:6443
-    cp /tmp/kubeadm-config ~/.kube/config-kubeadm
+    mkdir -p ~/.kube
+    scp -o StrictHostKeyChecking=no -o PasswordAuthentication=no -i ~/.ssh/kubeadm_kvm_key ubuntu@{{ kubeadm_vm_ip }}:/home/ubuntu/.kube/config ~/.kube/config-kubeadm
+    sed -i "s/127.0.0.1/{{ kubeadm_vm_ip }}/g" ~/.kube/config-kubeadm
+    sed -i "s/localhost/{{ kubeadm_vm_ip }}/g" ~/.kube/config-kubeadm
+    sed -i "s/192.168.122.[0-9]\+/{{ kubeadm_vm_ip }}/g" ~/.kube/config-kubeadm
   
 - name: Display kubeadm cluster information
   debug:
@@ -132,3 +274,4 @@
       - "🌐 VM IP: {{ kubeadm_vm_ip }}"
       - "📦 Runtime: containerd"
       - "🔗 Access: export KUBECONFIG=~/.kube/config-kubeadm"
+      - "   or: kubectl --kubeconfig ~/.kube/config-kubeadm get nodes"
