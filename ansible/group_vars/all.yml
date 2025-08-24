@@ -25,7 +25,7 @@ minikube:
   nodes: 1
   memory: "12288"  # Increased for ML builds and multiple applications
   cpus: 4
-  disk_size: "40g"  # Increased for ML images, builds, and PVC storage
+  disk_size: "60g"  # Generous storage for ML workloads, container images, and data
   kubernetes_version: "latest"  # Use latest available version (v1.33 series)
   driver: "{{ 'kvm2' if deployment_mode.type == 'prod' else 'kvm2' }}"  # Use kvm2 for better stability
   container_runtime: "containerd"  # Modern container runtime

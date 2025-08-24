@@ -19,7 +19,7 @@ persistence:
   enabled: true
   existingClaim: ""
   storageClass: "csi-hostpath-sc"
-  size: 10Gi  # Increased for container image storage
+  size: 15Gi  # Generous storage for multiple container images and layers
 
 resources:
   limits:
