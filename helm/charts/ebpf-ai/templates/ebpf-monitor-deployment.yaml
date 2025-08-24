@@ -38,7 +38,11 @@ spec:
         fsGroup: 0
       containers:
       - name: {{ .Values.ebpfMonitor.name }}
+        {{- if .Values.global.useInternalRegistry }}
         image: "{{ .Values.global.registry }}/{{ .Values.ebpfMonitor.image.repository }}:{{ .Values.ebpfMonitor.image.tag | default .Values.global.imageTag }}"
+        {{- else }}
+        image: "{{ .Values.ebpfMonitor.image.repository }}:{{ .Values.ebpfMonitor.image.tag }}"
+        {{- end }}
         imagePullPolicy: {{ .Values.ebpfMonitor.image.pullPolicy }}
         securityContext:
           privileged: true
