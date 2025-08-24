@@ -1,0 +1,22 @@
+# MetalLB Configuration for eBPF-AI Platform
+
+metallb:
+  # Use official MetalLB chart
+  enabled: true
+  
+# IP Address Pool Configuration
+ipAddressPool:
+  name: "apps-pool"
+  addresses:
+    - "10.0.10.101-10.0.10.120"  # 20 IPs for applications
+
+# L2 Advertisement Configuration  
+l2Advertisement:
+  name: "apps-l2"
+  ipAddressPools:
+    - "apps-pool"
+  interfaces:
+    - "br0"  # Bridge interface
+  nodeSelectors:
+    - matchLabels:
+        kubernetes.io/hostname: "labjp"

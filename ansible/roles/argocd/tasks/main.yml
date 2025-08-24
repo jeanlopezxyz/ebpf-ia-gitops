@@ -23,7 +23,7 @@
           "server.insecure": "true"  # Quoted for proper YAML parsing
         cm:
           admin.enabled: "true"
-          url: "http://192.168.122.100:30080"  # Base URL for NodePort access
+          url: "http://argocd.{{ kubeadm.base_domain }}"  # Base URL using DNS hostname
         secret:
           # Initial admin password (will be hashed by ArgoCD)
           argocdServerAdminPassword: "admin123"
@@ -32,9 +32,8 @@
       server:
         insecure: true  # Enable insecure mode
         service:
-          type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
-          nodePortHttp: 30080
-          nodePortHttps: 30443
+          type: "LoadBalancer"  # Always use LoadBalancer with MetalLB
+          loadBalancerIP: "10.0.10.101"  # Fixed IP for ArgoCD
         ingress:
           enabled: false
         extraArgs:

@@ -17,14 +17,16 @@
 #   - Requires: Network bridge interface configuration
 #
 deployment_mode:
-  type: "lab"  # Options: "prod" or "lab" - Default: lab for development
+  type: "prod"  # Using prod mode for MetalLB with bridge networking
   
 # Cluster deployment method
 cluster_method: "kubeadm"  # Using kubeadm with KVM for production-like setup
 
 # Kubeadm single-node configuration
 kubeadm:
-  node_name: "ebpf-kvm-node"
+  node_name: "labjp"
+  hostname: "api.k8s.labjp.xyz"    # DNS hostname for API server
+  base_domain: "apps.k8s.labjp.xyz"  # Base domain for applications
   kubernetes_version: "v1.33.1"  # Latest stable Kubernetes version (August 2025)
   pod_network_cidr: "10.244.0.0/16"  # Pod network (65K IPs)
   service_cidr: "10.96.0.0/12"       # Service network (1M IPs)
@@ -32,19 +34,20 @@ kubeadm:
     memory: "12288"  # 12GB RAM
     cpus: 4
     disk_size: "60g"
-    network_bridge: "virbr0"  # Default libvirt bridge
-    static_ip: "192.168.122.100"  # Fixed IP for the VM
-    gateway: "192.168.122.1"      # Default libvirt gateway
+    network_bridge: "br0"         # Production bridge
+    static_ip: "10.0.10.100"       # Fixed IP in bridge network
+    gateway: "10.0.10.1"          # Bridge gateway
     dns_servers:
-      - "8.8.8.8"
-      - "8.8.4.4"
+      - "10.0.10.1"              # pfSense as primary DNS
+      - "8.8.8.8"                 # Backup DNS
   
 # Network configuration
 network:
   # Production: Use local network range for direct access
-  # Lab: Use KVM virtual range (accessed via NodePort)
-  metallb_ip_range: "{{ '10.0.20.200-10.0.20.210' if deployment_mode.type == 'prod' else '192.168.122.200-192.168.122.210' }}"
-  bridge_interface: "en0"  # Network interface for production bridge mode
+  # Lab: Use KVM virtual range (accessed via NodePort)  
+  metallb_ip_range: "10.0.10.101-10.0.10.120"  # 20 IPs range for MetalLB
+  nginx_ingress_ip: "10.0.10.101"  # Fixed IP for Ingress Controller (first in range)
+  bridge_interface: "br0"  # Your configured bridge interface
   
 # Cilium configuration
 cilium:

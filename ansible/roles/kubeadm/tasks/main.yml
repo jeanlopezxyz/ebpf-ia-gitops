@@ -136,7 +136,9 @@
                 dhcp4: no
                 addresses:
                   - {{ kubeadm.vm.static_ip }}/24
-                gateway4: {{ kubeadm.vm.gateway }}
+                routes:
+                  - to: default
+                    via: {{ kubeadm.vm.gateway }}
                 nameservers:
                   addresses:
                     - 8.8.8.8
@@ -168,7 +170,7 @@
       --disk /var/lib/libvirt/images/{{ kubeadm.node_name }}.qcow2,device=disk \
       --disk /tmp/cloud-init.iso,device=cdrom \
       --os-variant ubuntu22.04 \
-      --network network=default \
+      --network bridge={{ kubeadm.vm.network_bridge }} \
       --graphics none \
       --console pty,target_type=serial \
       --noautoconsole \
@@ -237,7 +239,7 @@
     apt-mark hold kubelet kubeadm kubectl
     
     # Initialize cluster
-    kubeadm init --pod-network-cidr={{ kubeadm.pod_network_cidr }} --service-cidr={{ kubeadm.service_cidr }} --apiserver-advertise-address={{ kubeadm.vm.static_ip }}
+    kubeadm init --pod-network-cidr={{ kubeadm.pod_network_cidr }} --service-cidr={{ kubeadm.service_cidr }} --apiserver-advertise-address={{ kubeadm.vm.static_ip }} --apiserver-cert-extra-sans={{ kubeadm.hostname }}
     
     # Configure kubectl for ubuntu user
     mkdir -p /home/ubuntu/.kube
@@ -258,9 +260,9 @@
   shell: |
     mkdir -p ~/.kube
     scp -o StrictHostKeyChecking=no -o PasswordAuthentication=no -i ~/.ssh/kubeadm_kvm_key ubuntu@{{ kubeadm_vm_ip }}:/home/ubuntu/.kube/config ~/.kube/config-kubeadm
-    sed -i "s/127.0.0.1/{{ kubeadm_vm_ip }}/g" ~/.kube/config-kubeadm
-    sed -i "s/localhost/{{ kubeadm_vm_ip }}/g" ~/.kube/config-kubeadm
-    sed -i "s/192.168.122.[0-9]\+/{{ kubeadm_vm_ip }}/g" ~/.kube/config-kubeadm
+    sed -i "s/127.0.0.1/{{ kubeadm.hostname }}/g" ~/.kube/config-kubeadm
+    sed -i "s/localhost/{{ kubeadm.hostname }}/g" ~/.kube/config-kubeadm
+    sed -i "s/{{ kubeadm_vm_ip }}/{{ kubeadm.hostname }}/g" ~/.kube/config-kubeadm
   
 - name: Display kubeadm cluster information
   debug:

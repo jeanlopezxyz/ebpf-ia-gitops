@@ -51,4 +51,4 @@ tls:
   # Registry hostname for certificate Subject Alternative Name
   hostname: "registry.registry.svc.cluster.local"
   # Registry external IP address
-  registryIP: "192.168.122.100"
+  registryHostname: "labjp.local"

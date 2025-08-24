@@ -18,10 +18,7 @@
       include_role:
         name: "{{ cluster_method }}"
         
-    - name: Install MetalLB LoadBalancer
-      include_role:
-        name: metallb
-      when: deployment_mode.type == 'prod'
+    # MetalLB and NGINX Ingress now managed by ArgoCD applications
         
     - name: Install Cilium CNI with eBPF
       include_role:

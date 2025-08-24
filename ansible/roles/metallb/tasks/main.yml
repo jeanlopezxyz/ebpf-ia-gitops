@@ -42,7 +42,7 @@
     
 - name: Get KVM IP range for MetalLB
   set_fact:
-    kvm_ip: "192.168.122.100"
+    kvm_ip: "10.0.10.100"
   
 - name: Wait for MetalLB to stabilize
   pause:
@@ -72,7 +72,28 @@
       spec:
         ipAddressPools:
         - "{{ deployment_mode.type }}-pool"
+        interfaces:
+        - "{{ network.bridge_interface }}"
+        nodeSelectors:
+        - matchLabels:
+            kubernetes.io/hostname: "{{ kubeadm.node_name }}"
     state: present
+
+- name: Create BGP Peer for MetalLB (if needed)
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: metallb.io/v1beta2
+      kind: BGPPeer
+      metadata:
+        name: gateway-peer
+        namespace: metallb-system
+      spec:
+        myASN: 64512
+        peerASN: 64512  
+        peerAddress: "{{ kubeadm.vm.gateway }}"  # pfSense gateway
+        sourceAddress: "{{ kubeadm.vm.static_ip }}"  # Node IP
+    state: present
+    when: network.enable_bgp | default(false)
     
 - name: Restart MetalLB controller to pickup config
   kubernetes.core.k8s:

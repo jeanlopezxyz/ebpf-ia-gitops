@@ -1,0 +1,9 @@
+apiVersion: v2
+name: metallb
+description: MetalLB LoadBalancer for eBPF-AI Platform
+version: 0.1.0
+appVersion: "v0.14.8"
+dependencies:
+  - name: metallb
+    version: "0.14.8"
+    repository: https://metallb.github.io/metallb
