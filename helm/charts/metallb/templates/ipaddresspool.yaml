@@ -1,10 +1,13 @@
+{{- range .Values.ipAddressPools }}
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
-  name: {{ .Values.ipAddressPool.name }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
 spec:
   addresses:
-  {{- range .Values.ipAddressPool.addresses }}
+  {{- range .addresses }}
   - {{ . }}
   {{- end }}
+---
+{{- end }}

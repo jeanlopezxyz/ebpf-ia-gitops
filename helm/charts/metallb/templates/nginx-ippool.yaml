@@ -1,0 +1,10 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: nginx-pool
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    metallb.universe.tf/allow-shared-ip: "nginx-ingress"
+spec:
+  addresses:
+  - "10.0.10.101/32"  # Reserved for NGINX Ingress Controller
