@@ -16,7 +16,7 @@
       "required": ["name", "image", "service"],
       "properties": {
         "name": { "type": "string" },
-        "replicaCount": { "type": "integer", "minimum": 1 },
+        "replicaCount": { "type": "integer", "minimum": 0 },
         "image": {
           "type": "object",
           "properties": {
@@ -44,7 +44,7 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "name": { "type": "string" },
-        "replicaCount": { "type": "integer", "minimum": 1 },
+        "replicaCount": { "type": "integer", "minimum": 0 },
         "image": { "type": "object" },
         "service": { "type": "object" },
         "env": { "type": "array" },

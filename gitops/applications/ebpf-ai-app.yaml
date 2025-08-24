@@ -26,7 +26,7 @@ spec:
         - name: global.imageTag
           value: "latest"
         - name: mlDetector.replicaCount
-          value: "1"
+          value: "0"
         - name: mlDetector.image.tag
           value: "latest"
         - name: ebpfMonitor.image.tag
