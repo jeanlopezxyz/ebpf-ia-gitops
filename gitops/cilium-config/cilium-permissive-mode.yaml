@@ -1,0 +1,16 @@
+# ConfigMap to ensure Cilium remains in permissive mode
+# No network policies = all traffic allowed by default
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cilium-permissive-mode
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium-config
+    app.kubernetes.io/part-of: ebpf-ai-platform
+data:
+  # This ConfigMap documents that we intentionally use permissive mode
+  # for development/lab environments
+  mode: "permissive"
+  description: "Cilium configured in permissive mode - no network policies defined"
+  note: "For production, add specific CiliumNetworkPolicy resources to this directory"

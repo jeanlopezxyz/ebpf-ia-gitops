@@ -39,6 +39,7 @@
           enabled: false
         extraArgs:
           - --insecure
+          - --grpc-web
       repoServer:
         env:
           - name: HTTP_PROXY
