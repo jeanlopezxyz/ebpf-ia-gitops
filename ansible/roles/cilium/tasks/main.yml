@@ -8,7 +8,7 @@
   kubernetes.core.helm:
     name: cilium
     chart_ref: cilium/cilium
-    chart_version: "1.16.5"
+    chart_version: "{{ cilium.version }}"
     release_namespace: kube-system
     values:
       # Hubble observability (simplified)

@@ -38,22 +38,33 @@
     enabled: yes
   become: yes
 
-- name: Create KVM virtual machine with cloud-init
+- name: Download Ubuntu Server ISO if not exists
+  get_url:
+    url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso"
+    dest: "/tmp/ubuntu-24.04.3-live-server-amd64.iso"
+    mode: '0644'
+  become: yes
+
+- name: Generate preseed file
+  template:
+    src: preseed.cfg.j2
+    dest: /tmp/preseed.cfg
+    mode: '0644'
+  become: yes
+
+- name: Create KVM virtual machine with Ubuntu ISO
   shell: |
     virt-install \
       --name {{ kubeadm.node_name }} \
       --memory {{ kubeadm.vm.memory }} \
       --vcpus {{ kubeadm.vm.cpus }} \
       --disk size={{ kubeadm.vm.disk_size | regex_replace('g', '') }} \
-      --os-variant ubuntu22.04 \
+      --os-variant ubuntu24.04 \
       --network bridge={{ kubeadm.vm.network_bridge }} \
       --graphics none \
       --console pty,target_type=serial \
-      --location 'http://archive.ubuntu.com/ubuntu/dists/jammy/main/installer-amd64/' \
-      --extra-args 'console=ttyS0,115200n8 serial' \
-      --initrd-inject /tmp/preseed.cfg \
-      --extra-args "file=/preseed.cfg" \
-      --wait 10 \
+      --cdrom /tmp/ubuntu-24.04.3-live-server-amd64.iso \
+      --wait 15 \
       --noautoconsole
   become: yes
   register: vm_create

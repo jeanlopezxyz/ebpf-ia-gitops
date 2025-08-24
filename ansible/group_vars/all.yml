@@ -29,7 +29,7 @@ minikube:
   memory: "12288"  # Increased for ML builds and multiple applications
   cpus: 4
   disk_size: "60g"  # Generous storage for ML workloads, container images, and data
-  kubernetes_version: "latest"  # Use latest available version (v1.33 series)
+  kubernetes_version: "v1.33.1"  # Latest stable Kubernetes version (August 2025)
   driver: "{{ 'kvm2' if deployment_mode.type == 'prod' else 'kvm2' }}"  # Use kvm2 for better stability
   container_runtime: "containerd"  # Modern container runtime
   wait_timeout: 600  # 10 minutes timeout for cluster startup
@@ -37,7 +37,7 @@ minikube:
 # Kubeadm single-node configuration (alternative to Minikube)
 kubeadm:
   node_name: "ebpf-kvm-node"
-  kubernetes_version: "v1.33.1"
+  kubernetes_version: "v1.33.1"  # Latest stable Kubernetes version (August 2025)
   pod_network_cidr: "10.244.0.0/16"
   service_cidr: "10.96.0.0/12"
   vm:
@@ -55,7 +55,7 @@ network:
   
 # Cilium configuration
 cilium:
-  version: "1.16.5"  # Stable version for Minikube compatibility
+  version: "1.18.1"  # Latest stable version (August 2025)
   enable_hubble: true
   enable_gateway_api: true
   enable_l2_announcements: false  # Disabled for stability
