@@ -1,31 +1,7 @@
 ---
-# Storage configuration for different cluster types
+# Storage configuration for kubeadm clusters
+# Using local-path-provisioner (Rancher)
 
-# Minikube storage
-- name: Enable storage addon for Minikube
-  command: minikube addons enable storage-provisioner --profile {{ minikube.profile }}
-  ignore_errors: yes
-  when: cluster_method == "minikube"
-
-- name: Create StorageClass for Minikube
-  kubernetes.core.k8s:
-    definition:
-      apiVersion: storage.k8s.io/v1
-      kind: StorageClass
-      metadata:
-        name: persistent-storage
-        annotations:
-          storageclass.kubernetes.io/is-default-class: "false"
-      provisioner: k8s.io/minikube-hostpath
-      volumeBindingMode: Immediate
-      reclaimPolicy: Retain
-      allowVolumeExpansion: true
-      parameters:
-        type: hostPath
-    state: present
-  when: cluster_method == "minikube"
-
-# Kubeadm/KVM storage - using local-path-provisioner (Rancher)
 - name: Install local-path-provisioner for kubeadm
   kubernetes.core.k8s:
     definition:
@@ -34,13 +10,11 @@
       metadata:
         name: local-path-storage
     state: present
-  when: cluster_method == "kubeadm"
 
 - name: Deploy local-path-provisioner
   kubernetes.core.k8s:
     state: present
     src: https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
-  when: cluster_method == "kubeadm"
 
 - name: Wait for local-path-provisioner to be ready
   kubernetes.core.k8s_info:
@@ -53,7 +27,6 @@
       type: Progressing
       status: "True"
     wait_timeout: 120
-  when: cluster_method == "kubeadm"
 
 - name: Create default StorageClass for kubeadm
   kubernetes.core.k8s:
@@ -69,21 +42,11 @@
       reclaimPolicy: Delete
       allowVolumeExpansion: true
     state: present
-  when: cluster_method == "kubeadm"
 
-- name: Display storage setup results for Minikube
-  debug:
-    msg:
-      - "✅ Storage configuration completed!"
-      - "📦 StorageClass: persistent-storage (hostPath, retain policy)"
-      - "🔧 Provisioner: k8s.io/minikube-hostpath"
-  when: cluster_method == "minikube"
-
-- name: Display storage setup results for kubeadm
+- name: Display storage setup results
   debug:
     msg:
       - "✅ Storage configuration completed!"
       - "📦 StorageClass: local-path (default)"
       - "🔧 Provisioner: rancher.io/local-path"
       - "📁 Storage path: /opt/local-path-provisioner"
-  when: cluster_method == "kubeadm"

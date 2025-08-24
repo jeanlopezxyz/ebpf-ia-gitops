@@ -25,9 +25,9 @@
           admin.enabled: "true"
           url: "http://192.168.122.100:30080"  # Base URL for NodePort access
         secret:
-          # bcrypt hash for "admin123"
-          argocdServerAdminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"
-          # RFC3339 time to force reload of admin password
+          # Initial admin password (will be hashed by ArgoCD)
+          argocdServerAdminPassword: "admin123"
+          # RFC3339 time to force reload of admin password  
           argocdServerAdminPasswordMtime: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       server:
         insecure: true  # Enable insecure mode
@@ -39,7 +39,6 @@
           enabled: false
         extraArgs:
           - --insecure
-          - --grpc-web
       repoServer:
         env:
           - name: HTTP_PROXY
@@ -192,6 +191,20 @@
         namespace: "{{ argocd.namespace }}"
       data:
         admin.password: JDJ5JDA1JEN3UmJ6V0l3SlJ5MHZBZVZCakZodk9oYUVjZU13RWwvMlZRcEpVcU1vdGlwUHIwMHUxeWlX
+      type: Opaque
+    merge_type: merge
+
+- name: Configure initial admin secret for login
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: argocd-initial-admin-secret
+        namespace: "{{ argocd.namespace }}"
+      data:
+        password: YWRtaW4xMjM=  # base64 of 'admin123'
       type: Opaque
     merge_type: merge
     

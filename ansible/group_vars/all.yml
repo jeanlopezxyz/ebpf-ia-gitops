@@ -20,21 +20,9 @@ deployment_mode:
   type: "lab"  # Options: "prod" or "lab" - Default: lab for development
   
 # Cluster deployment method
-cluster_method: "minikube"  # Options: "minikube" or "kubeadm" - Default: minikube
+cluster_method: "kubeadm"  # Using kubeadm with KVM for production-like setup
 
-# Minikube configuration
-minikube:
-  profile: "ebpf-ia"
-  nodes: 1
-  memory: "12288"  # Increased for ML builds and multiple applications
-  cpus: 4
-  disk_size: "60g"  # Generous storage for ML workloads, container images, and data
-  kubernetes_version: "v1.33.1"  # Latest stable Kubernetes version (August 2025)
-  driver: "{{ 'kvm2' if deployment_mode.type == 'prod' else 'kvm2' }}"  # Use kvm2 for better stability
-  container_runtime: "containerd"  # Modern container runtime
-  wait_timeout: 600  # 10 minutes timeout for cluster startup
-
-# Kubeadm single-node configuration (alternative to Minikube)
+# Kubeadm single-node configuration
 kubeadm:
   node_name: "ebpf-kvm-node"
   kubernetes_version: "v1.33.1"  # Latest stable Kubernetes version (August 2025)
