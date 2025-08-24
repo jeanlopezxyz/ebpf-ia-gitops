@@ -37,7 +37,7 @@ spec:
     - name: git-revision
       value: main
     - name: image-registry
-      value: registry.registry.svc.cluster.local:5000
+      value: 192.168.39.244:30050
     - name: image-name
       value: ml-detector
     - name: dockerfile-path
