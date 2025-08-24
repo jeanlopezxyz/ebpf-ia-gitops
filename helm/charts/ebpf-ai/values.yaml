@@ -4,14 +4,16 @@ global:
   namespace: ebpf-security
   registry: "registry.registry.svc.cluster.local:5000"  # Custom internal registry via service
   imageTag: "latest"
+  # Initial deployment uses public images, then updates to internal registry
+  useInternalRegistry: false
   
 # ML Detector Configuration
 mlDetector:
   name: ml-detector
   replicaCount: 1
   image:
-    repository: ml-detector  
-    tag: latest
+    repository: python  # Use public image initially
+    tag: "3.11-slim"
     pullPolicy: IfNotPresent
   
   service:
@@ -68,8 +70,8 @@ ebpfMonitor:
   name: ebpf-monitor
   replicaCount: 1
   image:
-    repository: ebpf-monitor
-    tag: latest
+    repository: alpine  # Use public image initially
+    tag: "3.18"
     pullPolicy: IfNotPresent
     
   service:

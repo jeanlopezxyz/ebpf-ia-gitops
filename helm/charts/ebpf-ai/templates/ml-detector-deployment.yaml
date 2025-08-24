@@ -53,10 +53,9 @@ spec:
           runAsUser: 0
           runAsGroup: 0
       {{- end }}
-      containers:
-      - name: {{ .Values.mlDetector.name }}
-        image: "{{ .Values.global.registry }}/{{ .Values.mlDetector.image.repository }}:{{ .Values.mlDetector.image.tag | default .Values.global.imageTag }}"
-        imagePullPolicy: {{ .Values.mlDetector.image.pullPolicy }}
+      {{- if .Values.mlDetector.persistence.enabled }}
+      initContainers:
+      - name: setup-data-permissions
         securityContext:
           runAsUser: 1000
           runAsGroup: 1000
