@@ -1,48 +1,17 @@
 ---
-# NetworkPolicy to allow ebpf-security namespace to access registry
+# NetworkPolicy to allow all namespaces to access registry (development mode)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-ebpf-security-to-registry
+  name: allow-all-to-registry
   namespace: registry
 spec:
   podSelector: {}
   policyTypes:
   - Ingress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: ebpf-security
-    ports:
-    - protocol: TCP
-      port: 5000
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: tekton
-    ports:
-    - protocol: TCP
-      port: 5000
-  - from: []  # Allow all other traffic (for health checks, etc.)
-    ports:
-    - protocol: TCP
-      port: 5000
----
-# Ensure ebpf-security namespace has the required label
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ebpf-security
-  labels:
-    name: ebpf-security
-    app.kubernetes.io/part-of: ebpf-ai-system
----
-# Ensure tekton namespace has the required label  
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: tekton
-  labels:
-    name: tekton
-    app.kubernetes.io/part-of: tekton-system
+  - {}  # Allow all traffic to registry pods
+# Note: ebpf-security namespace is managed by ebpf-ai application
+# We only add the NetworkPolicy, not manage the namespace
+# Note: tekton namespace is managed by tekton application
+# We only add the NetworkPolicy, not create the namespace
