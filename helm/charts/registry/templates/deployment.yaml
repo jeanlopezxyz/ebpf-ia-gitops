@@ -22,13 +22,22 @@ spec:
         - name: {{ include "registry.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.tls.enabled }}
           env:
+            {{- if .Values.tls.enabled }}
             - name: REGISTRY_HTTP_TLS_CERTIFICATE
               value: /certs/tls.crt
             - name: REGISTRY_HTTP_TLS_KEY
               value: /certs/tls.key
-          {{- end }}
+            {{- end }}
+            # Configuration for better concurrency handling
+            - name: REGISTRY_HEALTH_STORAGEDRIVER_ENABLED
+              value: "false"
+            - name: REGISTRY_HTTP_TIMEOUT_READ
+              value: "300s"
+            - name: REGISTRY_HTTP_TIMEOUT_WRITE  
+              value: "300s"
+            - name: REGISTRY_HTTP_TIMEOUT_IDLE
+              value: "300s"
           ports:
             - containerPort: 5000
               name: https

@@ -21,13 +21,13 @@ persistence:
   storageClass: "csi-hostpath-sc"
   size: 5Gi  # Adjusted for Minikube tmpfs constraints
 
-resources: {}
-  # limits:
-  #   cpu: 100m
-  #   memory: 256Mi
-  # requests:
-  #   cpu: 50m
-  #   memory: 128Mi
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
 
 podLabels: {}
 
