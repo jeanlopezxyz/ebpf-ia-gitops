@@ -9,6 +9,8 @@ spec:
   selector:
     app.kubernetes.io/name: {{ include "registry.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    # Exclude insecure-config DaemonSet pods from service
+    app.kubernetes.io/component: registry
   ports:
     - name: http
       port: {{ .Values.service.port }}
