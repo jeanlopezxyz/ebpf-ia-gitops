@@ -15,22 +15,10 @@ check-deps: ## Check if required tools are installed
 	@command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl is not installed"; exit 1; }
 	@command -v helm >/dev/null 2>&1 || { echo "❌ Helm is not installed"; exit 1; }
 	@command -v ansible >/dev/null 2>&1 || { echo "❌ Ansible is not installed"; exit 1; }
-	@command -v minikube >/dev/null 2>&1 || { echo "❌ Minikube is not installed"; exit 1; }
+	# Minikube check removed - using kubeadm only
 	@echo "✅ All dependencies are installed"
 
-bootstrap: check-deps ## Bootstrap complete infrastructure (Minikube + ArgoCD + Auto-deploy Apps)
-	@echo "🚀 Bootstrapping eBPF + AI GitOps environment..."
-	@echo "This will:"
-	@echo "  1. Create Minikube cluster (ebpf-ia profile)"
-	@echo "  2. Install Cilium CNI with eBPF"
-	@echo "  3. Install ArgoCD GitOps"
-	@echo "  4. Auto-create and sync all applications"
-	@echo "  5. Wait for applications to be healthy"
-	@echo ""
-	ansible-galaxy collection install kubernetes.core
-	ansible-playbook -i ansible/inventory/localhost.yml ansible/bootstrap.yml
-	@echo ""
-	@echo "✅ Bootstrap complete! Run 'make port-forward' to access services"
+bootstrap: bootstrap-kubeadm ## Bootstrap complete infrastructure (alias for kubeadm)
 
 bootstrap-kubeadm: check-deps ## Bootstrap with kubeadm + KVM (production-like)
 	@echo "🚀 Bootstrapping eBPF + AI GitOps with kubeadm + KVM..."
@@ -60,7 +48,7 @@ status: ## Show status of all components
 	@echo "📊 Component Status:"
 	@echo ""
 	@echo "🎯 Minikube:"
-	@minikube status --profile ebpf-ia || echo "❌ Minikube not running"
+	@sudo virsh list --state-running | grep ebpf-kvm-node || echo "❌ KVM cluster not running"
 	@echo ""
 	@echo "☸️  Kubernetes Nodes:"
 	@kubectl get nodes 2>/dev/null || echo "❌ Cluster not accessible"
@@ -113,8 +101,9 @@ port-status: ## Show status of port forwards
 	@echo "🔍 Active port forwards:"
 	@ps aux | grep 'kubectl port-forward' | grep -v grep | awk '{print "   " $$11 " " $$12 " " $$13 " " $$14}' || echo "   No active port forwards"
 
-dashboard: ## Open Minikube dashboard
-	minikube dashboard --profile ebpf-ia
+dashboard: ## Open Kubernetes dashboard via ArgoCD
+	@echo "📊 Kubernetes Dashboard available via ArgoCD:"
+	@echo "http://192.168.122.100:30080"
 
 threats: ## Open threat detection dashboard via port-forward
 	@echo "🚨 Threat Detection Dashboard..."
