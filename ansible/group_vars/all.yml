@@ -35,7 +35,7 @@ kubeadm:
     cpus: 4
     disk_size: "60g"
     network_bridge: "br0"         # Production bridge
-    static_ip: "10.0.10.100"       # Fixed IP in bridge network
+    static_ip: "10.0.10.101"       # Fixed IP for API server
     gateway: "10.0.10.1"          # Bridge gateway
     dns_servers:
       - "10.0.10.1"              # pfSense as primary DNS
@@ -45,8 +45,8 @@ kubeadm:
 network:
   # Production: Use local network range for direct access
   # Lab: Use KVM virtual range (accessed via NodePort)  
-  metallb_ip_range: "10.0.10.101-10.0.10.120"  # 20 IPs range for MetalLB
-  nginx_ingress_ip: "10.0.10.101"  # Fixed IP for Ingress Controller (first in range)
+  metallb_ip_range: "10.0.10.100-10.0.10.119"  # 20 IPs range for MetalLB
+  nginx_ingress_ip: "10.0.10.100"  # Fixed IP for Ingress Controller (apps)
   bridge_interface: "br0"  # Your configured bridge interface
   
 # Cilium configuration
