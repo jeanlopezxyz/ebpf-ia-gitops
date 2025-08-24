@@ -40,7 +40,7 @@ spec:
               value: "600s"
             - name: REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR
               value: "inmemory"
-            - name: REGISTRY_HTTP_HOST
+            - name: REGISTRY_HTTP_ADDR
               value: "0.0.0.0:5000"
             - name: REGISTRY_STORAGE_DELETE_ENABLED
               value: "true"
