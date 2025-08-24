@@ -22,7 +22,7 @@ spec:
         - name: global.namespace
           value: ebpf-security
         - name: global.registry  
-          value: "192.168.39.244:30050"
+          value: "registry.registry.svc.cluster.local:5000"
         - name: global.imageTag
           value: "latest"
         - name: mlDetector.replicaCount
