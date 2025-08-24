@@ -29,15 +29,21 @@ spec:
             - name: REGISTRY_HTTP_TLS_KEY
               value: /certs/tls.key
             {{- end }}
-            # Configuration for better concurrency handling
+            # Configuration for better concurrency and large uploads
             - name: REGISTRY_HEALTH_STORAGEDRIVER_ENABLED
               value: "false"
             - name: REGISTRY_HTTP_TIMEOUT_READ
-              value: "300s"
+              value: "600s"
             - name: REGISTRY_HTTP_TIMEOUT_WRITE  
-              value: "300s"
+              value: "600s"
             - name: REGISTRY_HTTP_TIMEOUT_IDLE
-              value: "300s"
+              value: "600s"
+            - name: REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR
+              value: "inmemory"
+            - name: REGISTRY_HTTP_HOST
+              value: "0.0.0.0:5000"
+            - name: REGISTRY_STORAGE_DELETE_ENABLED
+              value: "true"
           ports:
             - containerPort: 5000
               name: https
