@@ -23,7 +23,7 @@ deployment_mode:
 minikube:
   profile: "ebpf-ia"
   nodes: 1
-  memory: "8192"  # Increased for better performance
+  memory: "12288"  # Increased for ML builds and multiple applications
   cpus: 4
   disk_size: "20g"  # Explicit disk size
   kubernetes_version: "latest"  # Use latest available version (v1.33 series)
