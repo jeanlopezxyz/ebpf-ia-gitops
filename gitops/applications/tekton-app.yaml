@@ -43,3 +43,20 @@ spec:
         factor: 2
         maxDuration: 3m
   revisionHistoryLimit: 10
+  ignoreDifferences:
+    # Ignore resource differences for Tekton components (chart manages defaults)
+    - group: apps
+      kind: Deployment
+      name: tekton-events-controller
+      jsonPointers:
+        - /spec/template/spec/containers/0/resources
+    - group: apps
+      kind: Deployment
+      name: tekton-pipelines-controller
+      jsonPointers:
+        - /spec/template/spec/containers/0/resources
+    - group: apps
+      kind: Deployment  
+      name: tekton-pipelines-webhook
+      jsonPointers:
+        - /spec/template/spec/containers/0/resources
