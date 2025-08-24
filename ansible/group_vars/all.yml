@@ -19,6 +19,9 @@
 deployment_mode:
   type: "lab"  # Options: "prod" or "lab" - Default: lab for development
   
+# Cluster deployment method
+cluster_method: "minikube"  # Options: "minikube" or "kubeadm" - Default: minikube
+
 # Minikube configuration
 minikube:
   profile: "ebpf-ia"
@@ -30,6 +33,18 @@ minikube:
   driver: "{{ 'kvm2' if deployment_mode.type == 'prod' else 'kvm2' }}"  # Use kvm2 for better stability
   container_runtime: "containerd"  # Modern container runtime
   wait_timeout: 600  # 10 minutes timeout for cluster startup
+
+# Kubeadm single-node configuration (alternative to Minikube)
+kubeadm:
+  node_name: "ebpf-kvm-node"
+  kubernetes_version: "v1.33.1"
+  pod_network_cidr: "10.244.0.0/16"
+  service_cidr: "10.96.0.0/12"
+  vm:
+    memory: "12288"  # 12GB RAM
+    cpus: 4
+    disk_size: "60g"
+    network_bridge: "virbr0"  # Default libvirt bridge
   
 # Network configuration
 network:

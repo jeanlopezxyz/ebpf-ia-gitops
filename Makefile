@@ -32,6 +32,20 @@ bootstrap: check-deps ## Bootstrap complete infrastructure (Minikube + ArgoCD + 
 	@echo ""
 	@echo "✅ Bootstrap complete! Run 'make port-forward' to access services"
 
+bootstrap-kubeadm: check-deps ## Bootstrap with kubeadm + KVM (production-like)
+	@echo "🚀 Bootstrapping eBPF + AI GitOps with kubeadm + KVM..."
+	@echo "This will:"
+	@echo "  1. Create KVM virtual machine"
+	@echo "  2. Install Ubuntu + kubeadm single-node cluster"
+	@echo "  3. Install Cilium CNI with eBPF"
+	@echo "  4. Install ArgoCD GitOps"
+	@echo "  5. Auto-create and sync all applications"
+	@echo ""
+	ansible-galaxy collection install kubernetes.core
+	ansible-playbook -i ansible/inventory/localhost.yml ansible/bootstrap.yml -e cluster_method=kubeadm
+	@echo ""
+	@echo "✅ Kubeadm bootstrap complete! Export KUBECONFIG=~/.kube/config-kubeadm"
+
 deploy: ## Deploy/update applications via ArgoCD (manual sync)
 	@echo "🔄 Manually syncing ArgoCD applications..."
 	@kubectl port-forward svc/argocd-server -n argocd 8080:80 &
@@ -112,6 +126,14 @@ clean: ## Clean up everything (delete cluster and resources)
 	@echo "🧹 Cleaning up eBPF + AI GitOps environment..."
 	@read -p "Are you sure you want to delete everything? [y/N] " confirm && [ "$$confirm" = "y" ]
 	ansible-playbook -i ansible/inventory/localhost.yml ansible/cleanup.yml
+
+clean-kubeadm: ## Clean up kubeadm KVM environment
+	@echo "🧹 Cleaning up kubeadm + KVM environment..."
+	@read -p "Are you sure you want to delete the KVM cluster? [y/N] " confirm && [ "$$confirm" = "y" ]
+	@sudo virsh destroy ebpf-kvm-node || true
+	@sudo virsh undefine ebpf-kvm-node || true
+	@rm -f ~/.kube/config-kubeadm || true
+	@echo "✅ Kubeadm environment cleanup complete"
 
 restart: clean bootstrap ## Complete restart (clean + bootstrap)
 

@@ -1,0 +1,107 @@
+---
+- name: Install required packages for KVM and Kubernetes
+  package:
+    name:
+      - qemu-kvm
+      - libvirt
+      - libvirt-daemon-system
+      - bridge-utils
+      - virt-manager
+      - curl
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+  become: yes
+
+- name: Start and enable libvirt service
+  systemd:
+    name: libvirtd
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Create KVM virtual machine with cloud-init
+  shell: |
+    virt-install \
+      --name {{ kubeadm.node_name }} \
+      --memory {{ kubeadm.vm.memory }} \
+      --vcpus {{ kubeadm.vm.cpus }} \
+      --disk size={{ kubeadm.vm.disk_size | regex_replace('g', '') }} \
+      --os-variant ubuntu22.04 \
+      --network bridge={{ kubeadm.vm.network_bridge }} \
+      --graphics none \
+      --console pty,target_type=serial \
+      --location 'http://archive.ubuntu.com/ubuntu/dists/jammy/main/installer-amd64/' \
+      --extra-args 'console=ttyS0,115200n8 serial' \
+      --initrd-inject /tmp/preseed.cfg \
+      --extra-args "file=/preseed.cfg" \
+      --wait 10 \
+      --noautoconsole
+  become: yes
+  register: vm_create
+  changed_when: vm_create.rc == 0
+
+- name: Wait for VM to be accessible via SSH
+  wait_for:
+    host: "{{ kubeadm_vm_ip }}"
+    port: 22
+    delay: 30
+    timeout: 300
+
+- name: Install Docker and kubeadm on VM
+  shell: |
+    ssh root@{{ kubeadm_vm_ip }} << 'EOF'
+    # Install Docker
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    # Install Kubernetes
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+    
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io kubelet kubeadm kubectl
+    
+    # Configure containerd
+    mkdir -p /etc/containerd
+    containerd config default | tee /etc/containerd/config.toml
+    sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+    systemctl restart containerd
+    systemctl enable containerd
+    
+    # Initialize cluster
+    kubeadm init --pod-network-cidr={{ kubeadm.pod_network_cidr }} --service-cidr={{ kubeadm.service_cidr }} --kubernetes-version={{ kubeadm.kubernetes_version }}
+    
+    # Configure kubectl for root
+    mkdir -p /root/.kube
+    cp -i /etc/kubernetes/admin.conf /root/.kube/config
+    chown root:root /root/.kube/config
+    
+    # Remove master taint for single-node cluster
+    kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+    
+    echo "✅ Kubeadm cluster initialized successfully"
+    EOF
+  register: kubeadm_init
+  
+- name: Copy kubeconfig to local machine
+  shell: |
+    scp root@{{ kubeadm_vm_ip }}:/root/.kube/config /tmp/kubeadm-config
+    export KUBECONFIG=/tmp/kubeadm-config
+    kubectl config set-cluster kubernetes --server=https://{{ kubeadm_vm_ip }}:6443
+    cp /tmp/kubeadm-config ~/.kube/config-kubeadm
+  
+- name: Display kubeadm cluster information
+  debug:
+    msg:
+      - "🚀 Kubeadm cluster '{{ kubeadm.node_name }}' is ready!"
+      - "📊 Nodes: 1 (single-node setup)"
+      - "💾 Memory: {{ kubeadm.vm.memory }}MB"
+      - "⚡ CPUs: {{ kubeadm.vm.cpus }}"
+      - "💽 Disk: {{ kubeadm.vm.disk_size }}"
+      - "🔄 Kubernetes: {{ kubeadm.kubernetes_version }}"
+      - "🌐 VM IP: {{ kubeadm_vm_ip }}"
+      - "📦 Runtime: containerd"
+      - "🔗 Access: export KUBECONFIG=~/.kube/config-kubeadm"

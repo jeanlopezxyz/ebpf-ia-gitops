@@ -13,9 +13,9 @@
       include_role:
         name: prerequisites
       
-    - name: Setup Minikube cluster
+    - name: Setup Kubernetes cluster
       include_role:
-        name: minikube
+        name: "{{ cluster_method }}"
         
     - name: Install MetalLB LoadBalancer
       include_role:
