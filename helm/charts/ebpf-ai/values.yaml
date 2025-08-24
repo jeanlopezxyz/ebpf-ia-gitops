@@ -10,7 +10,7 @@ global:
 # ML Detector Configuration
 mlDetector:
   name: ml-detector
-  replicaCount: 1
+  replicaCount: 0  # Disabled until images are built
   image:
     repository: python  # Use public image initially
     tag: "3.11-slim"
@@ -68,7 +68,7 @@ mlDetector:
 ebpfMonitor:
   enabled: true
   name: ebpf-monitor
-  replicaCount: 1
+  replicaCount: 0  # Disabled until images are built
   image:
     repository: alpine  # Use public image initially
     tag: "3.18"
