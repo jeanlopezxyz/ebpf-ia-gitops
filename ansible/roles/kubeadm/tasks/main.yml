@@ -1,9 +1,24 @@
 ---
-- name: Install required packages for KVM and Kubernetes
-  package:
+- name: Install required packages for KVM and Kubernetes (Fedora)
+  dnf:
     name:
       - qemu-kvm
       - libvirt
+      - libvirt-daemon
+      - bridge-utils
+      - virt-manager
+      - virt-install
+      - curl
+      - ca-certificates
+      - gnupg2
+    state: present
+  become: yes
+  when: ansible_os_family == "RedHat"
+  
+- name: Install required packages for KVM and Kubernetes (Ubuntu/Debian)
+  apt:
+    name:
+      - qemu-kvm
       - libvirt-daemon-system
       - bridge-utils
       - virt-manager
@@ -14,6 +29,7 @@
       - lsb-release
     state: present
   become: yes
+  when: ansible_os_family == "Debian"
 
 - name: Start and enable libvirt service
   systemd:
