@@ -11,7 +11,5 @@ spec:
   - Ingress
   ingress:
   - {}  # Allow all traffic to registry pods
-# Note: ebpf-security namespace is managed by ebpf-ai application
-# We only add the NetworkPolicy, not manage the namespace
-# Note: tekton namespace is managed by tekton application
-# We only add the NetworkPolicy, not create the namespace
+# Note: Namespaces are managed by their respective applications
+# This policy is only for network access, not namespace management
