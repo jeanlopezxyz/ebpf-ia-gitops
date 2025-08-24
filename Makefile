@@ -151,12 +151,12 @@ dev: ## Setup development environment with hot-reload
 info: ## Show access information
 	@echo "🔍 eBPF + AI GitOps Access Information:"
 	@echo ""
-	@echo "🌐 NodePort Access (direct via Minikube IP):"
-	@MINIKUBE_IP=$$(minikube ip -p ebpf-ia 2>/dev/null || echo 'pending'); \
-	echo "  Grafana Dashboard: http://$$MINIKUBE_IP:30300 (admin/admin123)"; \
-	echo "  Container Registry: http://$$MINIKUBE_IP:30050"; \
-	echo "  ArgoCD UI: http://$$MINIKUBE_IP:31055 (admin/admin123)"; \
-	echo "  Tekton Dashboard: http://$$MINIKUBE_IP:30097"
+	@echo "🌐 NodePort Access (direct via KVM IP):"
+	@KVM_IP="192.168.122.100"; \
+	echo "  Grafana Dashboard: http://$$KVM_IP:30300 (admin/admin123)"; \
+	echo "  Container Registry: http://$$KVM_IP:30050"; \
+	echo "  ArgoCD UI: http://$$KVM_IP:30080 (admin/admin123)"; \
+	echo "  Tekton Dashboard: http://$$KVM_IP:30097"
 	@echo ""
 	@echo "🔗 Port Forward Access (RECOMMENDED - always works):"
 	@echo "  Run: make port-forward"
@@ -185,14 +185,14 @@ info: ## Show access information
 
 nodeport: ## Open NodePort services in browser
 	@echo "🌐 Opening NodePort services..."
-	@MINIKUBE_IP=$$(minikube ip -p ebpf-ia 2>/dev/null); \
-	if [ "$$MINIKUBE_IP" != "" ]; then \
+	@KVM_IP="192.168.122.100"; \
+	if ping -c1 $$KVM_IP >/dev/null 2>&1; then \
 		echo "Opening Grafana Dashboard..."; \
-		open "http://$$MINIKUBE_IP:30300" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:30300" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:30300"; \
+		open "http://$$KVM_IP:30300" 2>/dev/null || xdg-open "http://$$KVM_IP:30300" 2>/dev/null || echo "Open manually: http://$$KVM_IP:30300"; \
 		echo "Opening ArgoCD..."; \
-		open "http://$$MINIKUBE_IP:31055" 2>/dev/null || xdg-open "http://$$MINIKUBE_IP:31055" 2>/dev/null || echo "Open manually: http://$$MINIKUBE_IP:31055"; \
+		open "http://$$KVM_IP:30080" 2>/dev/null || xdg-open "http://$$KVM_IP:30080" 2>/dev/null || echo "Open manually: http://$$KVM_IP:30080"; \
 	else \
-		echo "❌ Minikube not running or IP not available"; \
+		echo "❌ KVM cluster not running or IP not reachable"; \
 	fi
 lint-helm: ## Lint all Helm charts
 	@echo "🧹 Linting Helm charts..."

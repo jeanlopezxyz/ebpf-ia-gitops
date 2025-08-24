@@ -42,8 +42,8 @@ kubeadm:
 # Network configuration
 network:
   # Production: Use local network range for direct access
-  # Lab: Use Minikube virtual range (accessed via NodePort)
-  metallb_ip_range: "{{ '10.0.20.200-10.0.20.210' if deployment_mode.type == 'prod' else '192.168.49.100-192.168.49.110' }}"
+  # Lab: Use KVM virtual range (accessed via NodePort)
+  metallb_ip_range: "{{ '10.0.20.200-10.0.20.210' if deployment_mode.type == 'prod' else '192.168.122.200-192.168.122.210' }}"
   bridge_interface: "en0"  # Network interface for production bridge mode
   
 # Cilium configuration

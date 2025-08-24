@@ -40,9 +40,9 @@
       status: "True"
     wait_timeout: 300
     
-- name: Get minikube IP range for MetalLB
-  command: minikube ip --profile {{ minikube.profile }}
-  register: minikube_ip
+- name: Get KVM IP range for MetalLB
+  set_fact:
+    kvm_ip: "192.168.122.100"
   
 - name: Wait for MetalLB to stabilize
   pause:
