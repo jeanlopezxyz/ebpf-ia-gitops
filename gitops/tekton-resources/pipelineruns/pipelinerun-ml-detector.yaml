@@ -37,7 +37,7 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 1Gi
+              storage: 3Gi
   params:
     - name: git-url
       value: https://github.com/jeanlopezxyz/ebpf-ia-gitops.git

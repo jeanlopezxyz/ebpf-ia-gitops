@@ -19,7 +19,7 @@ persistence:
   enabled: true
   existingClaim: ""
   storageClass: "csi-hostpath-sc"
-  size: 5Gi  # Adjusted for Minikube tmpfs constraints
+  size: 10Gi  # Increased for container image storage
 
 resources:
   limits:

@@ -8,7 +8,7 @@ prometheus:
   server:
     persistentVolume:
       enabled: true
-      size: 3Gi  # Adjusted for Minikube constraints
+      size: 5Gi  # Increased for longer metric retention
       storageClass: "csi-hostpath-sc"
     service:
       type: ClusterIP
