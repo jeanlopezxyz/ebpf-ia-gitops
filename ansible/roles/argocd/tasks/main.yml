@@ -20,19 +20,25 @@
     values:
       configs:
         params:
-          server.insecure: true  # For local development
+          "server.insecure": "true"  # Quoted for proper YAML parsing
         cm:
           admin.enabled: "true"
+          url: "http://192.168.122.100:30080"  # Base URL for NodePort access
         secret:
           # bcrypt hash for "admin123"
           argocdServerAdminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"
           # RFC3339 time to force reload of admin password
           argocdServerAdminPasswordMtime: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
       server:
+        insecure: true  # Enable insecure mode
         service:
           type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
+          nodePortHttp: 30080
+          nodePortHttps: 30443
         ingress:
           enabled: false
+        extraArgs:
+          - --insecure
       repoServer:
         env:
           - name: HTTP_PROXY
