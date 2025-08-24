@@ -22,13 +22,6 @@ spec:
         fsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
-      resources:
-        requests:
-          memory: "2Gi"
-          cpu: "1000m"
-        limits:
-          memory: "4Gi"
-          cpu: "2000m"
   workspaces:
     - name: shared-data
       volumeClaimTemplate:
