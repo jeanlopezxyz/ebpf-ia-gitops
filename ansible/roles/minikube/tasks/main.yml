@@ -57,5 +57,5 @@
       - "🔄 Kubernetes: {{ minikube.kubernetes_version }}"
       - "🚗 Driver: {{ minikube.driver }}"
       - "📦 Runtime: {{ minikube.container_runtime }}"
-      - "🗄️ CSI Driver: {{ 'Ready' if csi_driver_check.resources else 'Pending' }}"
+      - "🗄️ CSI Driver: Enabled via addon"
       - "📚 Default StorageClass: csi-hostpath-sc (fsGroup compatible)"
