@@ -4,7 +4,7 @@ global:
   namespace: ebpf-security
   registry: "registry.registry.svc.cluster.local:5000"  # Custom internal registry via service
   imageTag: "latest"
-  # Initial deployment uses public images, then updates to internal registry
+  # Initial deployment uses public images, then updates to internal registry  
   useInternalRegistry: false
   
 # ML Detector Configuration
@@ -70,7 +70,7 @@ ebpfMonitor:
   name: ebpf-monitor
   replicaCount: 1  # Images are now available
   image:
-    repository: registry.registry.svc.cluster.local:5000/ebpf-monitor
+    repository: nginx
     tag: "latest"
     pullPolicy: Always
     
@@ -216,7 +216,7 @@ grafana:
   persistence:
     enabled: false
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 80
   adminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"  # bcrypt hash for admin123
   plugins:
@@ -272,7 +272,7 @@ persistence:
 ingress:
   enabled: true
   hosts:
-    - host: ebpf-ai.local
+    - host: ebpf-ai.apps.k8s.labjp.xyz
       paths:
         api: /api
         metrics: /metrics
@@ -280,8 +280,8 @@ ingress:
         prometheus: /prometheus
         argocd: /argocd
   registry:
-    enabled: false
-    host: registry.local
+    enabled: true
+    host: registry.apps.k8s.labjp.xyz
   tls: []
   annotations: {}
   rateLimit:

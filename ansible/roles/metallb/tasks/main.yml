@@ -25,6 +25,10 @@
       type: Available
       status: "True"
     wait_timeout: 300
+
+- name: Display interface configuration (validation delegated to MetalLB)
+  debug:
+    msg: "Using network interface: {{ network.node_interface }}"
     
 - name: Create MetalLB IP Address Pool
   kubernetes.core.k8s:
@@ -51,7 +55,7 @@
         ipAddressPools:
         - apps-pool
         interfaces:
-        - "enp1s0"  # VM network interface
+        - "{{ network.node_interface }}"
         nodeSelectors:
         - matchLabels:
             kubernetes.io/hostname: "{{ kubeadm.node_name }}"

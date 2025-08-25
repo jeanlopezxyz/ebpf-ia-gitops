@@ -30,6 +30,22 @@ spec:
           value: "20"
         - name: metrics-server.enabled
           value: "true"
+        - name: ingress.enabled
+          value: "true"
+        - name: ingress.className
+          value: "nginx"
+        - name: ingress.hosts[0].host
+          value: "dashboard.apps.k8s.labjp.xyz"
+        - name: ingress.hosts[0].paths[0].path
+          value: "/"
+        - name: ingress.hosts[0].paths[0].pathType
+          value: "Prefix"
+        - name: ingress.annotations.nginx\.ingress\.kubernetes\.io/ssl-redirect
+          value: "false"
+        - name: ingress.annotations.nginx\.ingress\.kubernetes\.io/backend-protocol
+          value: "HTTPS"
+        - name: ingress.annotations.nginx\.ingress\.kubernetes\.io/ssl-passthrough
+          value: "true"
   destination:
     server: https://kubernetes.default.svc
     namespace: kubernetes-dashboard

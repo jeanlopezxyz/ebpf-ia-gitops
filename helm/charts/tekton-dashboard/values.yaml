@@ -11,10 +11,10 @@ service:
   port: 9097
 
 ingress:
-  enabled: false
+  enabled: true
   className: nginx
   hosts:
-    - host: tekton-dashboard.local
+    - host: tekton-dashboard.apps.k8s.labjp.xyz
       path: /
   annotations: {}
   tls: []

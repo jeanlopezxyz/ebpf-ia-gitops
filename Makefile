@@ -151,12 +151,16 @@ dev: ## Setup development environment with hot-reload
 info: ## Show access information
 	@echo "🔍 eBPF + AI GitOps Access Information:"
 	@echo ""
-	@echo "🌐 NodePort Access (direct via KVM IP):"
-	@KVM_IP="192.168.122.100"; \
-	echo "  Grafana Dashboard: http://$$KVM_IP:30300 (admin/admin123)"; \
-	echo "  Container Registry: http://$$KVM_IP:30050"; \
-	echo "  ArgoCD UI: http://$$KVM_IP:30080 (admin/admin123)"; \
-	echo "  Tekton Dashboard: http://$$KVM_IP:30097"
+	@echo "🌐 LoadBalancer + Ingress Access (via MetalLB 10.0.10.101):"
+	@echo "  NGINX Ingress LoadBalancer: http://10.0.10.101"
+	@echo ""
+	@echo "📡 Domain Access (all via NGINX Ingress):"
+	@echo "  ArgoCD: http://argocd.apps.k8s.labjp.xyz (admin/admin123)"
+	@echo "  Grafana: http://grafana.apps.k8s.labjp.xyz (admin/admin123)"
+	@echo "  Registry: http://registry.apps.k8s.labjp.xyz"
+	@echo "  eBPF-AI: http://ebpf-ai.apps.k8s.labjp.xyz"
+	@echo "  Tekton Dashboard: http://tekton-dashboard.apps.k8s.labjp.xyz"
+	@echo "  Kubernetes Dashboard: https://dashboard.apps.k8s.labjp.xyz"
 	@echo ""
 	@echo "🔗 Port Forward Access (RECOMMENDED - always works):"
 	@echo "  Run: make port-forward"
@@ -183,16 +187,17 @@ info: ## Show access information
 	@echo "  make logs          # View application logs"
 	@echo "  make sync          # Force sync GitOps"
 
-nodeport: ## Open NodePort services in browser
-	@echo "🌐 Opening NodePort services..."
-	@KVM_IP="192.168.122.100"; \
-	if ping -c1 $$KVM_IP >/dev/null 2>&1; then \
-		echo "Opening Grafana Dashboard..."; \
-		open "http://$$KVM_IP:30300" 2>/dev/null || xdg-open "http://$$KVM_IP:30300" 2>/dev/null || echo "Open manually: http://$$KVM_IP:30300"; \
-		echo "Opening ArgoCD..."; \
-		open "http://$$KVM_IP:30080" 2>/dev/null || xdg-open "http://$$KVM_IP:30080" 2>/dev/null || echo "Open manually: http://$$KVM_IP:30080"; \
+ingress: ## Open Ingress services in browser
+	@echo "🌐 Opening Ingress services..."
+	@if ping -c1 10.0.10.101 >/dev/null 2>&1; then \
+		echo "Opening ArgoCD via Ingress..."; \
+		open "http://argocd.apps.k8s.labjp.xyz" 2>/dev/null || xdg-open "http://argocd.apps.k8s.labjp.xyz" 2>/dev/null || echo "Open manually: http://argocd.apps.k8s.labjp.xyz"; \
+		echo "Opening Grafana via Ingress..."; \
+		open "http://grafana.apps.k8s.labjp.xyz" 2>/dev/null || xdg-open "http://grafana.apps.k8s.labjp.xyz" 2>/dev/null || echo "Open manually: http://grafana.apps.k8s.labjp.xyz"; \
+		echo "Opening Kubernetes Dashboard..."; \
+		open "https://dashboard.apps.k8s.labjp.xyz" 2>/dev/null || xdg-open "https://dashboard.apps.k8s.labjp.xyz" 2>/dev/null || echo "Open manually: https://dashboard.apps.k8s.labjp.xyz"; \
 	else \
-		echo "❌ KVM cluster not running or IP not reachable"; \
+		echo "❌ MetalLB LoadBalancer (NGINX Ingress) not reachable"; \
 	fi
 lint-helm: ## Lint all Helm charts
 	@echo "🧹 Linting Helm charts..."

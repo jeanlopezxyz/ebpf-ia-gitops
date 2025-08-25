@@ -14,9 +14,7 @@ argo-cd:
   server:
     insecure: true
     service:
-      type: "NodePort"  # Use NodePort for bootstrap, LoadBalancer after MetalLB
-      nodePortHttp: 30080
-      nodePortHttps: 30443
+      type: "ClusterIP"  # ClusterIP with Ingress routing
     ingress:
       enabled: false # We use custom Ingress below
     extraArgs:
