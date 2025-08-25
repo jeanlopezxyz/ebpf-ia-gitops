@@ -228,7 +228,7 @@ grafana:
       datasources:
         - name: Prometheus
           type: prometheus
-          url: http://ebpf-ai-prometheus-server:9090
+          url: http://prometheus-server.prometheus.svc.cluster.local:80
           access: proxy
           isDefault: true
           editable: true

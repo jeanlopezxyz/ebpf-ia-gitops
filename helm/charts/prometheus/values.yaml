@@ -71,7 +71,7 @@ prometheus:
       # Container Registry metrics
       - job_name: 'container-registry'
         static_configs:
-        - targets: ['registry.container-registry.svc.cluster.local:5000']
+        - targets: ['registry.registry.svc.cluster.local:5000']
         metrics_path: /metrics
         scrape_interval: 30s
         scrape_timeout: 10s
