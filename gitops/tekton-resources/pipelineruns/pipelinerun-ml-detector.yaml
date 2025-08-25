@@ -37,7 +37,7 @@ spec:
     - name: git-revision
       value: main
     - name: image-registry
-      value: registry.apps.k8s.labjp.xyz
+      value: registry.registry.svc.cluster.local:5000
     - name: image-name
       value: ml-detector
     - name: dockerfile-path
