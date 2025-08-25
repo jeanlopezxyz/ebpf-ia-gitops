@@ -34,8 +34,8 @@ kubeadm:
     memory: "12288"  # 12GB RAM
     cpus: 4
     disk_size: "60g"
-    network_bridge: "br0"         # Production bridge
-    static_ip: "10.0.10.100"       # Fixed IP for API server (matches DNS)
+    network_bridge: "br0"         # Bridge network
+    static_ip: "10.0.10.100"       # Fixed IP for VM/API
     gateway: "10.0.10.1"          # Bridge gateway
     dns_servers:
       - "10.0.10.1"              # pfSense as primary DNS
@@ -45,7 +45,7 @@ kubeadm:
 network:
   # Production: Use local network range for direct access
   # Lab: Use KVM virtual range (accessed via NodePort)  
-  metallb_ip_range: "10.0.10.101-10.0.10.120"  # 20 IPs range for MetalLB
+  metallb_ip_range: "10.0.10.101-10.0.10.101"  # Single IP for NGINX Ingress
   nginx_ingress_ip: "10.0.10.101"  # Fixed IP for Ingress Controller
   bridge_interface: "br0"  # Your configured bridge interface
   
