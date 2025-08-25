@@ -22,8 +22,6 @@ spec:
           value: "LoadBalancer"
         - name: controller.service.loadBalancerIP
           value: "10.0.10.101"  # Fixed IP for all apps
-        - name: controller.service.annotations.metallb\.universe\.tf/address-pool
-          value: "nginx-pool"  # Use dedicated pool
         - name: controller.service.externalTrafficPolicy
           value: "Local"
         - name: controller.ingressClassResource.default
