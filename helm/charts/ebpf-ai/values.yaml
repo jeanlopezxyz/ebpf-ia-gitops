@@ -12,7 +12,7 @@ mlDetector:
   name: ml-detector
   replicaCount: 1  # Images are now available
   image:
-    repository: registry.registry.svc.cluster.local:5000/ml-detector
+    repository: jeanlopezxyz/ml-detector
     tag: "latest"
     pullPolicy: Always
   
@@ -70,7 +70,7 @@ ebpfMonitor:
   name: ebpf-monitor
   replicaCount: 1  # Images are now available
   image:
-    repository: registry.registry.svc.cluster.local:5000/ebpf-monitor
+    repository: jeanlopezxyz/ebpf-monitor
     tag: "latest"
     pullPolicy: Always
     
