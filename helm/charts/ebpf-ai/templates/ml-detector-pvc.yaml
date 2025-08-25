@@ -9,6 +9,8 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: ml-detector-storage
     app.kubernetes.io/part-of: ebpf-ai
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode | default "ReadWriteOnce" }}
