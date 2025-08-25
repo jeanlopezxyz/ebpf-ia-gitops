@@ -171,9 +171,6 @@ ingress:
         grafana: /grafana
         prometheus: /prometheus
         argocd: /argocd
-  registry:
-    enabled: true
-    host: registry.apps.k8s.labjp.xyz
   tls: []
   annotations: {}
   rateLimit:
