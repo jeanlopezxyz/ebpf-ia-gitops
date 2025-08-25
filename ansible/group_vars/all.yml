@@ -52,6 +52,12 @@ network:
   # Example values: enp1s0, ens3, eth0 (use `ip -br -4 addr` on the node to confirm)
   node_interface: "enp1s0"
 
+# MetalLB tuning (optional). By default, advertise on all node interfaces.
+# To force a specific interface or node selector, uncomment below.
+metallb:
+  interfaces: []  # e.g., ["enp1s0"]
+  nodeSelectors: []  # e.g., [{ matchLabels: { kubernetes.io/hostname: "{{ kubeadm.node_name }}" } }]
+
 # Cilium configuration
 cilium:
   version: "1.18.1" # Latest stable version (August 2025)

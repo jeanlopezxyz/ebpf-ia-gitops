@@ -121,21 +121,6 @@
         - lsb-release
         - apt-transport-https
         - openssh-server
-      network:
-        version: 2
-        ethernets:
-          enp1s0:
-            dhcp4: false
-            dhcp6: false
-            addresses:
-              - {{ kubeadm.vm.static_ip }}/24
-            routes:
-              - to: default
-                via: {{ kubeadm.vm.gateway }}
-            nameservers:
-              addresses:
-                - {{ kubeadm.vm.gateway }}
-                - 8.8.8.8
       runcmd:
         - systemctl disable --now ufw
         - swapoff -a
@@ -143,6 +128,25 @@
         - systemctl enable ssh
         - systemctl start ssh
         - systemctl disable --now systemd-networkd-wait-online || true
+        - |
+          cat > /etc/netplan/01-static.yaml << EOF
+          network:
+            version: 2
+            ethernets:
+              enp1s0:
+                dhcp4: false
+                dhcp6: false
+                addresses:
+                  - {{ kubeadm.vm.static_ip }}/24
+                routes:
+                  - to: default
+                    via: {{ kubeadm.vm.gateway }}
+                nameservers:
+                  addresses:
+                    - {{ kubeadm.vm.gateway }}
+                    - 8.8.8.8
+          EOF
+        - netplan apply
     dest: /tmp/user-data
   become: yes
 

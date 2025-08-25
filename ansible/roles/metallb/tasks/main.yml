@@ -50,11 +50,14 @@
       spec:
         ipAddressPools:
         - apps-pool
+        {{- if metallb.interfaces is defined and metallb.interfaces }}
         interfaces:
-        - "{{ network.node_interface | default('enp1s0') }}"  # VM/node interface name
+        {{- to_nice_yaml metallb.interfaces | nindent(10) }}
+        {{- end }}
+        {{- if metallb.nodeSelectors is defined and metallb.nodeSelectors }}
         nodeSelectors:
-        - matchLabels:
-            kubernetes.io/hostname: "{{ kubeadm.node_name }}"
+        {{- to_nice_yaml metallb.nodeSelectors | nindent(10) }}
+        {{- end }}
     state: present
     
 - name: Display MetalLB status
@@ -62,5 +65,5 @@
     msg:
       - "✅ MetalLB LoadBalancer installed successfully!"
       - "🌐 IP Pool: {{ network.metallb_ip_range }}"
-      - "🔗 Interface: {{ network.bridge_interface }}"
+      - "🔗 Interfaces: {{ metallb.interfaces | default('all') }}"
       - "📦 Namespace: metallb-system"
