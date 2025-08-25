@@ -18,6 +18,9 @@ class PrometheusSource:
     def __init__(self, base_url: Optional[str] = None, timeout: float = 5.0) -> None:
         self.base_url = base_url or os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
         self.timeout = timeout
+        # Optimized: Connection pooling for real-time performance
+        self.session = requests.Session()
+        self.session.headers.update({'Connection': 'keep-alive'})
         # Metric names (override with env if your Prom deploy differs)
         self.m_packets = os.getenv("PROM_METRIC_PACKETS", "ebpf_packets_processed_total")
         self.m_bytes = os.getenv("PROM_METRIC_BYTES", "ebpf_bytes_processed_total")
@@ -28,7 +31,7 @@ class PrometheusSource:
 
     def _query(self, promql: str) -> float:
         url = f"{self.base_url}/api/v1/query"
-        resp = requests.get(url, params={"query": promql, "time": str(time.time())}, timeout=self.timeout)
+        resp = self.session.get(url, params={"query": promql, "time": str(time.time())}, timeout=self.timeout)
         resp.raise_for_status()
         data = resp.json()
         if data.get("status") != "success":

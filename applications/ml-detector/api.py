@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from flask import Blueprint, jsonify, request, Response
 
-from detector import ThreatDetector
+from threat_detector import ThreatDetector
 from pydantic import ValidationError
 from metrics import (
     generate_metrics_payload,
@@ -51,7 +51,8 @@ def create_api(detector: ThreatDetector) -> Blueprint:
                     req = DetectRequest(**(request.get_json(force=True) or {}))
                 except ValidationError as ve:
                     return jsonify({"error": ve.errors()}), 400
-                result = detector.detect(req.to_features_dict())
+                detection_result = detector.detect(req.to_features_dict())
+                result = detection_result.to_dict()
                 # increment counters per threat (with required labels)
                 for t in result.get("threat_types", []):
                     confidence = result.get("confidence", 0.0)
@@ -77,29 +78,6 @@ def create_api(detector: ThreatDetector) -> Blueprint:
         except Exception as e:
             return jsonify({"error": str(e)}), 500
     
-    @api.route("/classify_username", methods=["POST"])
-    def classify_username() -> Response:
-        """Classify username content using n-gram analysis (Rakuten approach)."""
-        try:
-            data = request.get_json(force=True) or {}
-            username_text = data.get("username_text", "")
-            
-            if not username_text:
-                return jsonify({"error": "username_text required"}), 400
-            
-            predicted_type, confidence = detector._classify_username_content(username_text)
-            
-            return jsonify({
-                "username_text": username_text,
-                "predicted_type": predicted_type,
-                "confidence": confidence,
-                "n_gram_analysis": True
-            })
-            
-        except Exception as e:
-            logger.error(f"Username classification error: {e}")
-            return jsonify({"error": str(e)}), 500
-
     @api.route("/stats")
     def stats() -> Response:
         return jsonify(
@@ -109,8 +87,8 @@ def create_api(detector: ThreatDetector) -> Blueprint:
                     "temporal": detector.temporal_detector.is_trained(),
                     "statistical": detector.statistical_detector.is_trained()
                 },
-                "training_samples": len(getattr(detector, 'all_data_window', [])),
-                "high_confidence_samples": len(getattr(detector, 'high_confidence_window', [])),
+                "training_samples": len(detector.all_data_window),
+                "high_confidence_samples": len(detector.high_confidence_window),
             }
         )
 
@@ -140,7 +118,8 @@ def create_api(detector: ThreatDetector) -> Blueprint:
             features = src.snapshot()
             with PROCESSING_TIME.time():
                 REQUESTS_TOTAL.inc()
-                result = detector.detect(features)
+                detection_result = detector.detect(features)
+                result = detection_result.to_dict()
                 # increment counters per threat (with required labels)
                 for t in result.get("threat_types", []):
                     confidence = result.get("confidence", 0.0)

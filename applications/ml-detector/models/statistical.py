@@ -37,31 +37,26 @@ class StatisticalAnomalyDetector(BaseDetectionModel):
             logger.error(f"Statistical model update error: {e}")
     
     def predict(self, features: np.ndarray) -> float:
-        """Predict anomaly score using Modified Z-Score (ZMAD)."""
+        """Predict anomaly score using Modified Z-Score (ZMAD) - VECTORIZED."""
         if not self._is_trained:
             return 0.0
         
         try:
             current_features = features[0]
             historical_array = np.array(list(self.historical_data))
-            anomaly_scores = []
             
-            # Apply ZMAD to each feature dimension
-            for i in range(len(current_features)):
-                feature_history = historical_array[:, i]
-                median_val = np.median(feature_history)
-                mad = np.median(np.abs(feature_history - median_val))
-                
-                # Avoid division by zero
-                if mad == 0:
-                    mad = 0.001
-                
-                # Calculate Modified Z-Score (ZMAD)
-                zmad = 0.6745 * (current_features[i] - median_val) / mad
-                
-                # Convert to anomaly score (0-1)
-                feature_anomaly_score = min(abs(zmad) / 3.5, 1.0)
-                anomaly_scores.append(feature_anomaly_score)
+            # VECTORIZED ZMAD calculation (much faster than loops)
+            medians = np.median(historical_array, axis=0)
+            mad_values = np.median(np.abs(historical_array - medians), axis=0)
+            
+            # Avoid division by zero (vectorized)
+            mad_values = np.where(mad_values == 0, 0.001, mad_values)
+            
+            # Calculate Modified Z-Score for all features at once
+            zmad_scores = 0.6745 * (current_features - medians) / mad_values
+            
+            # Convert to anomaly scores (vectorized)
+            anomaly_scores = np.minimum(np.abs(zmad_scores) / 3.5, 1.0)
             
             # Return average ZMAD-based anomaly score
             return float(np.mean(anomaly_scores))

@@ -10,6 +10,7 @@ import time
 import os
 from collections import deque
 from typing import Dict, List, Deque, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 
 from models.base import DetectionResult
@@ -56,6 +57,9 @@ class ThreatDetector:
         self.high_confidence_count = 0
         self.total_samples_count = 0
         
+        # Performance optimization: ThreadPool for parallel model execution
+        self._executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="ml_model")
+        
         # Initialize detection components
         self.spatial_detector = SpatialAnomalyDetector()
         self.temporal_detector = TemporalAnomalyDetector()
@@ -70,6 +74,30 @@ class ThreatDetector:
         if self.training_enabled:
             self._start_background_training()
     
+    def extract_features(self, data: Dict[str, float], add_to_training: bool = True) -> np.ndarray:
+        """Extract features and optionally add to training windows."""
+        features = self._extract_features(data)
+        
+        if add_to_training:
+            with self._lock:
+                self.total_samples_count += 1
+                self.all_data_window.append(features[0])
+                self.recent_window.append(features[0])
+                
+                # High confidence determination (simplified)
+                if self._is_high_confidence_sample(data):
+                    self.high_confidence_window.append(features[0])
+                    self.high_confidence_count += 1
+        
+        return features
+    
+    def _is_high_confidence_sample(self, data: Dict[str, float]) -> bool:
+        """Determine if sample is high confidence for training."""
+        # Simple heuristic: normal-looking network traffic
+        pps = data.get("packets_per_second", 0)
+        ports = data.get("unique_ports", 0)
+        return pps < 500 and ports < 15
+    
     def detect(self, data: Dict[str, float]) -> DetectionResult:
         """
         Main detection method.
@@ -81,8 +109,8 @@ class ThreatDetector:
             DetectionResult with threat analysis
         """
         try:
-            # Extract features
-            features = self._extract_features(data)
+            # Extract features and add to training
+            features = self.extract_features(data, add_to_training=True)
             
             # Process IP-specific metrics
             attacking_ips = self._identify_attacking_ips(data)
@@ -157,39 +185,60 @@ class ThreatDetector:
             ]])
     
     def _detect_with_ml_ensemble(self, features: np.ndarray) -> List[Tuple[str, float]]:
-        """Run ML ensemble detection with consensus."""
+        """Run ML ensemble detection with consensus - OPTIMIZED for real-time."""
         scores = {}
         
-        # Spatial detection
-        if self.spatial_detector.is_trained():
-            scores['spatial'] = self.spatial_detector.predict(features)
+        # Execute models in parallel for better real-time performance
+        def run_spatial():
+            if self.spatial_detector.is_trained():
+                return ('spatial', self.spatial_detector.predict(features))
+            return ('spatial', 0.0)
         
-        # Temporal detection  
-        self.temporal_detector.add_sample(features)
-        if self.temporal_detector.is_trained():
-            scores['temporal'] = self.temporal_detector.predict(features)
+        def run_temporal():
+            self.temporal_detector.add_sample(features)  # Still need to add sample
+            if self.temporal_detector.is_trained():
+                return ('temporal', self.temporal_detector.predict(features))
+            return ('temporal', 0.0)
         
-        # Statistical detection
-        if self.statistical_detector.is_trained():
-            scores['statistical'] = self.statistical_detector.predict(features)
+        def run_statistical():
+            if self.statistical_detector.is_trained():
+                return ('statistical', self.statistical_detector.predict(features))
+            return ('statistical', 0.0)
         
-        # Consensus decision
+        # Submit all model predictions in parallel
+        futures = {
+            self._executor.submit(run_spatial): 'spatial',
+            self._executor.submit(run_temporal): 'temporal', 
+            self._executor.submit(run_statistical): 'statistical'
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(futures):
+            try:
+                model_name, score = future.result()
+                scores[model_name] = score
+            except Exception as e:
+                logger.warning(f"Model {futures[future]} prediction failed: {e}")
+                scores[futures[future]] = 0.0
+        
+        # Same consensus logic (unchanged)
         active_scores = [s for s in scores.values() if s > 0]
         
+        result = []
         if len(active_scores) >= 2:  # At least 2 models agree
             final_score = np.mean(active_scores)
             
             # Classify based on consensus
             if final_score > CONSENSUS_THRESHOLDS["critical_risk"]:
-                return [("ml_critical_risk", final_score)]
+                result = [("ml_critical_risk", final_score)]
             elif final_score > CONSENSUS_THRESHOLDS["high_risk"]:
-                return [("ml_high_risk", final_score)]
+                result = [("ml_high_risk", final_score)]
             elif final_score > CONSENSUS_THRESHOLDS["medium_risk"]:
-                return [("ml_medium_risk", final_score)]
+                result = [("ml_medium_risk", final_score)]
             elif final_score > CONSENSUS_THRESHOLDS["low_risk"]:
-                return [("ml_low_risk", final_score)]
+                result = [("ml_low_risk", final_score)]
         
-        return []
+        return result
     
     def _identify_attacking_ips(self, data: Dict[str, float]) -> List[str]:
         """Identify specific attacking IPs from top_ips data."""
@@ -303,5 +352,6 @@ class ThreatDetector:
         pass
     
     def shutdown(self) -> None:
-        """Gracefully shutdown background training."""
+        """Gracefully shutdown background training and thread pool."""
         self._shutdown_event.set()
+        self._executor.shutdown(wait=False)
