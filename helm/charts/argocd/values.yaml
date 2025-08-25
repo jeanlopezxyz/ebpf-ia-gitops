@@ -14,8 +14,9 @@ argo-cd:
   server:
     insecure: true
     service:
-      type: "LoadBalancer"
-      loadBalancerIP: "10.0.10.102" # Specific IP for ArgoCD
+      type: "NodePort"  # Use NodePort for bootstrap, LoadBalancer after MetalLB
+      nodePortHttp: 30080
+      nodePortHttps: 30443
     ingress:
       enabled: false # We use custom Ingress below
     extraArgs:
