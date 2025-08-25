@@ -17,6 +17,9 @@ spec:
   params:
     - name: IMAGE
       description: Reference of the image buildah will produce.
+    - name: PUSH_IMAGE
+      description: Image reference for pushing (can be different from IMAGE for external vs internal registry)
+      default: "$(params.IMAGE)"
     - name: BUILDER_IMAGE
       description: The location of the buildah builder image.
       default: quay.io/buildah/stable:v1
@@ -78,7 +81,7 @@ spec:
         buildah ${CERT_DIR_FLAG} "--storage-driver=$(params.STORAGE_DRIVER)" push $(params.PUSH_EXTRA_ARGS) \
           "--tls-verify=$(params.TLSVERIFY)" --digestfile /tmp/image-digest \
           --retry=3 --retry-delay=5s \
-          "$(params.IMAGE)" "docker://$(params.IMAGE)"
+          "$(params.IMAGE)" "docker://$(params.PUSH_IMAGE)"
         tee "$(results.IMAGE_DIGEST.path)" < /tmp/image-digest
         printf '%s' "$(params.IMAGE)" | tee "$(results.IMAGE_URL.path)"
       volumeMounts:
