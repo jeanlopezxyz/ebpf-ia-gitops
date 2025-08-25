@@ -4,7 +4,7 @@ grafana:
   enabled: true
   
   # Basic configuration
-  adminPassword: admin123
+  adminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"  # bcrypt hash for admin123
   
   # Service configuration
   service:

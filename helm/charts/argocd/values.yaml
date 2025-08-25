@@ -3,25 +3,24 @@
 argo-cd:
   configs:
     params:
-      "server.insecure": "true"  # HTTP mode for development
+      "server.insecure": "true" # HTTP mode for development
     cm:
       admin.enabled: "true"
-      url: "http://argocd.apps.k8s.labjp.xyz"  # External URL
+      url: "http://argocd.apps.k8s.labjp.xyz" # External URL
     secret:
-      # bcrypt hash for "admin123" 
       argocdServerAdminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"
       argocdServerAdminPasswordMtime: "2025-08-24T00:00:00Z"
-  
+
   server:
     insecure: true
     service:
       type: "LoadBalancer"
-      loadBalancerIP: "10.0.10.102"  # Specific IP for ArgoCD
+      loadBalancerIP: "10.0.10.102" # Specific IP for ArgoCD
     ingress:
-      enabled: false  # We use custom Ingress below
+      enabled: false # We use custom Ingress below
     extraArgs:
       - --insecure
-  
+
   repoServer:
     env:
       - name: NO_PROXY

@@ -218,7 +218,7 @@ grafana:
   service:
     type: LoadBalancer
     port: 80
-  adminPassword: admin
+  adminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"  # bcrypt hash for admin123
   plugins:
     - grafana-piechart-panel
     - grafana-worldmap-panel
