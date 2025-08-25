@@ -145,6 +145,10 @@ redis:
             
 
 
+# ServiceMonitor CRDs (Prometheus Operator)
+serviceMonitor:
+  enabled: false
+
 # Metrics annotations on pods (for non-operator Prometheus)
 metrics:
   addPrometheusAnnotations: true
