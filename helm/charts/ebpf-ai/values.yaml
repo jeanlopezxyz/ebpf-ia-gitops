@@ -12,7 +12,7 @@ mlDetector:
   name: ml-detector
   replicaCount: 1  # Images are now available
   image:
-    repository: nginx
+    repository: quay.io/jealopez/ml-detector
     tag: "latest"
     pullPolicy: Always
   
@@ -70,7 +70,7 @@ ebpfMonitor:
   name: ebpf-monitor
   replicaCount: 1  # Images are now available
   image:
-    repository: nginx  
+    repository: quay.io/jealopez/ebpf-monitor
     tag: "latest"
     pullPolicy: Always
     
