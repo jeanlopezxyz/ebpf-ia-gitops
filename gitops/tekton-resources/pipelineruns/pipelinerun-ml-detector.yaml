@@ -37,9 +37,9 @@ spec:
     - name: git-revision
       value: main
     - name: image-registry
-      value: registry.registry.svc.cluster.local:5000
+      value: quay.io
     - name: image-name
-      value: ml-detector
+      value: jealopez/ml-detector
     - name: dockerfile-path
       value: ./applications/ml-detector/Dockerfile
     - name: context-path

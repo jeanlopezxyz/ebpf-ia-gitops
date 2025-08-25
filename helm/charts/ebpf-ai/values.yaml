@@ -12,7 +12,7 @@ mlDetector:
   name: ml-detector
   replicaCount: 1  # Images are now available
   image:
-    repository: jeanlopezxyz/ml-detector
+    repository: nginx
     tag: "latest"
     pullPolicy: Always
   
@@ -70,7 +70,7 @@ ebpfMonitor:
   name: ebpf-monitor
   replicaCount: 1  # Images are now available
   image:
-    repository: jeanlopezxyz/ebpf-monitor
+    repository: nginx  
     tag: "latest"
     pullPolicy: Always
     
