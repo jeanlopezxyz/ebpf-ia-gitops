@@ -80,12 +80,12 @@ ingress:
     # Service type based on environment
     service_type: "{{ 'LoadBalancer' if deployment_mode.type == 'prod' else 'NodePort' }}"
   hosts:
-    main: "ebpf-ai.local"
-    registry: "registry.local"
-    grafana: "grafana.local"
-    prometheus: "prometheus.local"
-    argocd: "argocd.local"
-    dashboard: "dashboard.local"
+    main: "ebpf-ai.apps.k8s.labjp.xyz"
+    registry: "registry.apps.k8s.labjp.xyz"
+    grafana: "grafana.apps.k8s.labjp.xyz"
+    prometheus: "prometheus.apps.k8s.labjp.xyz"
+    argocd: "argocd.apps.k8s.labjp.xyz"
+    dashboard: "dashboard.apps.k8s.labjp.xyz"
   
 # Resource limits
 resources:

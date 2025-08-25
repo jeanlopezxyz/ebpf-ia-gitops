@@ -239,7 +239,7 @@
     apt-mark hold kubelet kubeadm kubectl
     
     # Initialize cluster
-    kubeadm init --pod-network-cidr={{ kubeadm.pod_network_cidr }} --service-cidr={{ kubeadm.service_cidr }} --apiserver-advertise-address={{ kubeadm.vm.static_ip }} --apiserver-cert-extra-sans={{ kubeadm.hostname }}
+    kubeadm init --pod-network-cidr={{ kubeadm.pod_network_cidr }} --service-cidr={{ kubeadm.service_cidr }} --apiserver-advertise-address={{ kubeadm.vm.static_ip }} --apiserver-cert-extra-sans=api.k8s.labjp.xyz,{{ kubeadm.hostname }}
     
     # Configure kubectl for ubuntu user
     mkdir -p /home/ubuntu/.kube

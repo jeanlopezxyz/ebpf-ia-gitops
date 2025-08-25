@@ -23,6 +23,9 @@
         enabled: "{{ cilium.enable_gateway_api }}"
       # Enable eBPF-based kube-proxy replacement
       kubeProxyReplacement: true
+      # Pod CIDR configuration
+      ipam:
+        mode: kubernetes
       # Simplified for stability
       operator:
         replicas: 1
