@@ -23,18 +23,6 @@
         enabled: "{{ cilium.enable_gateway_api }}"
       # Enable eBPF-based kube-proxy replacement
       kubeProxyReplacement: true
-      # LoadBalancer support
-      l2announcements:
-        enabled: true
-      externalIPs:
-        enabled: true
-      # Ingress Controller
-      ingressController:
-        enabled: true
-        loadbalancerMode: shared
-        service:
-          type: LoadBalancer
-          loadBalancerIP: "10.0.10.101"
       # Simplified for stability
       operator:
         replicas: 1
