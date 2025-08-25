@@ -53,8 +53,6 @@ spec:
       params:
         - name: IMAGE
           value: $(params.image-registry)/$(params.image-name):latest
-        - name: PUSH_IMAGE
-          value: registry.registry.svc.cluster.local:5000/$(params.image-name):latest
         - name: DOCKERFILE
           value: $(params.dockerfile-path)
         - name: CONTEXT
