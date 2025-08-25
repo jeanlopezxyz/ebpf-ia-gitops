@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/part-of: ebpf-ai
 spec:
   accessModes:
-    - ReadWriteMany  # Permitir múltiples pods
+    - {{ .Values.persistence.accessMode | default "ReadWriteOnce" }}
   resources:
     requests:
       storage: {{ .Values.mlDetector.persistence.size | default "1Gi" }}
