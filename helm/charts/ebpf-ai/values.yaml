@@ -2,10 +2,6 @@
 
 global:
   namespace: ebpf-security
-  registry: "registry.registry.svc.cluster.local:5000"  # Custom internal registry via service
-  imageTag: "latest"
-  # Initial deployment uses public images, then updates to internal registry  
-  useInternalRegistry: false
   
 # ML Detector Configuration
 mlDetector:
@@ -117,23 +113,6 @@ ebpfMonitor:
     create: true
     name: ebpf-monitor
 
-# Attack Simulator Configuration
-attackSimulator:
-  enabled: true
-  name: attack-simulator
-  replicaCount: 1
-  image:
-    repository: attack-simulator
-    tag: latest
-    pullPolicy: IfNotPresent
-    
-  env:
-    - name: ATTACK_MODE
-      value: "mixed"
-    - name: INTENSITY
-      value: "3"
-    - name: TARGET_NETWORK
-      value: "10.0.0.0/24"
 
 # HPA Configuration
 autoscaling:
@@ -163,99 +142,8 @@ redis:
     persistence:
       enabled: false
 
-# Prometheus Configuration (Dependency)
-prometheus:
-  enabled: false
-  alertmanager:
-    enabled: true
-    persistentVolume:
-      enabled: false
-  server:
-    persistentVolume:
-      enabled: false
-    service:
-      type: ClusterIP
-      servicePort: 9090
-    global:
-      scrape_interval: 15s
-      evaluation_interval: 15s
-    extraScrapeConfigs: |
-      - job_name: 'ml-detector'
-        static_configs:
-          - targets: ['ml-detector:5000']
-        metrics_path: '/metrics'
-        scrape_interval: 30s
-      - job_name: 'ebpf-monitor'
-        static_configs:
-          - targets: ['ebpf-monitor:8800']
-        metrics_path: '/metrics'
-        scrape_interval: 15s
-      - job_name: 'kubernetes-pods'
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names:
-                - ebpf-security
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-            action: keep
-            regex: true
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-            action: replace
-            target_label: __metrics_path__
-            regex: (.+)
-          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-            action: replace
-            regex: ([^:]+)(?::\d+)?;(\d+)
-            replacement: $1:$2
-            target_label: __address__
             
-# Grafana Configuration (Dependency)
-grafana:
-  enabled: false
-  persistence:
-    enabled: false
-  service:
-    type: ClusterIP
-    port: 80
-  adminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"  # bcrypt hash for admin123
-  plugins:
-    - grafana-piechart-panel
-    - grafana-worldmap-panel
-  datasources:
-    datasources.yaml:
-      apiVersion: 1
-      datasources:
-        - name: Prometheus
-          type: prometheus
-          url: http://prometheus-server.prometheus.svc.cluster.local:80
-          access: proxy
-          isDefault: true
-          editable: true
-  dashboardProviders:
-    dashboardproviders.yaml:
-      apiVersion: 1
-      providers:
-        - name: 'ebpf-ai'
-          orgId: 1
-          folder: 'eBPF + AI'
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/ebpf-ai
-  # Dashboards disabled - using sidecar.dashboards instead to avoid volume conflicts
-  sidecar:
-    dashboards:
-      enabled: true
-      label: grafana_dashboard
-      folder: /tmp/dashboards
-      provider:
-        foldersFromFilesStructure: true
 
-# ServiceMonitor CRDs (Prometheus Operator)
-serviceMonitor:
-  enabled: false
 
 # Metrics annotations on pods (for non-operator Prometheus)
 metrics:
