@@ -11,49 +11,12 @@
     name: argo
     repo_url: https://argoproj.github.io/argo-helm
     
-- name: Install ArgoCD via Helm
+- name: Install ArgoCD via custom Helm chart
   kubernetes.core.helm:
     name: argocd
-    chart_ref: argo/argo-cd
-    chart_version: "{{ argocd.version }}"
+    chart_ref: "{{ playbook_dir }}/../helm/charts/argocd"
     release_namespace: "{{ argocd.namespace }}"
-    values:
-      configs:
-        params:
-          "server.insecure": "true"  # Quoted for proper YAML parsing
-        cm:
-          admin.enabled: "true"
-          url: "http://argocd.{{ kubeadm.base_domain }}"  # Base URL using DNS hostname
-        secret:
-          # Initial admin password (will be hashed by ArgoCD)
-          argocdServerAdminPassword: "admin123"
-          # RFC3339 time to force reload of admin password  
-          argocdServerAdminPasswordMtime: "{{ lookup('pipe','date -u +%Y-%m-%dT%H:%M:%SZ') }}"
-      server:
-        insecure: true  # Enable insecure mode
-        service:
-          type: "LoadBalancer"  # Always use LoadBalancer with MetalLB
-          loadBalancerIP: "10.0.10.101"  # Fixed IP for ArgoCD
-        ingress:
-          enabled: false
-        extraArgs:
-          - --insecure
-      repoServer:
-        env:
-          - name: HTTP_PROXY
-            value: "{{ argocd.http_proxy | default('') }}"
-          - name: HTTPS_PROXY
-            value: "{{ argocd.https_proxy | default('') }}"
-          - name: NO_PROXY
-            value: "{{ argocd.no_proxy | default('127.0.0.1,localhost,.svc,.cluster.local,kubernetes.default.svc') }}"
-      controller:
-        env:
-          - name: HTTP_PROXY
-            value: "{{ argocd.http_proxy | default('') }}"
-          - name: HTTPS_PROXY
-            value: "{{ argocd.https_proxy | default('') }}"
-          - name: NO_PROXY
-            value: "{{ argocd.no_proxy | default('127.0.0.1,localhost,.svc,.cluster.local,kubernetes.default.svc') }}"
+    dependency_update: true
       dex:
         enabled: false  # Disable for simplicity
       notifications:
@@ -100,7 +63,7 @@
 #   - Then add label: kubectl label secret git-ssh-key argocd.argoproj.io/secret-type=repository -n argocd
 #   - Update applications to use: repoURL: "git@github.com:user/repo.git"
   
-# ArgoCD Ingress is now managed by the ebpf-ai chart application
+# ArgoCD Ingress is now managed by the ArgoCD Helm chart
 
 # Kubernetes Dashboard will be managed by ArgoCD as an application
   

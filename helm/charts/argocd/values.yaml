@@ -1,0 +1,51 @@
+# ArgoCD Configuration for eBPF-AI Platform
+
+argo-cd:
+  configs:
+    params:
+      "server.insecure": "true"  # HTTP mode for development
+    cm:
+      admin.enabled: "true"
+      url: "http://argocd.apps.k8s.labjp.xyz"  # External URL
+    secret:
+      # Initial admin password
+      argocdServerAdminPassword: "admin123"
+      argocdServerAdminPasswordMtime: "2025-08-24T00:00:00Z"
+  
+  server:
+    insecure: true
+    service:
+      type: "LoadBalancer"
+      loadBalancerIP: "10.0.10.102"  # Specific IP for ArgoCD
+    ingress:
+      enabled: false  # We use custom Ingress below
+    extraArgs:
+      - --insecure
+  
+  repoServer:
+    env:
+      - name: NO_PROXY
+        value: "127.0.0.1,localhost,.svc,.cluster.local,kubernetes.default.svc"
+
+# Ingress configuration for ArgoCD
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-passthrough: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      grpc_read_timeout 300;
+      grpc_send_timeout 300;
+      client_body_timeout 60;
+      client_header_timeout 60;
+      client_max_body_size 1m;
+  hosts:
+    - host: argocd.apps.k8s.labjp.xyz
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: argocd-server
+            port: 80
