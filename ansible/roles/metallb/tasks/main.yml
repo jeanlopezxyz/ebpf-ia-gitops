@@ -50,14 +50,11 @@
       spec:
         ipAddressPools:
         - apps-pool
-        {{- if metallb.interfaces is defined and metallb.interfaces }}
         interfaces:
-        {{- to_nice_yaml metallb.interfaces | nindent(10) }}
-        {{- end }}
-        {{- if metallb.nodeSelectors is defined and metallb.nodeSelectors }}
+        - "enp1s0"  # VM network interface
         nodeSelectors:
-        {{- to_nice_yaml metallb.nodeSelectors | nindent(10) }}
-        {{- end }}
+        - matchLabels:
+            kubernetes.io/hostname: "{{ kubeadm.node_name }}"
     state: present
     
 - name: Display MetalLB status
