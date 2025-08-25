@@ -57,16 +57,9 @@ cilium:
   enable_l2_announcements: false  # Disabled for stability
   enable_netkit: false  # Disabled for stability
   
-# ArgoCD configuration
+# ArgoCD configuration (minimal - full config in helm/charts/argocd/)
 argocd:
-  version: "5.51.6"
   namespace: "argocd"
-  admin_password: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"  # bcrypt hash for admin123
-  git_repo_url: "https://github.com/jeanlopezxyz/ebpf-ia-gitops.git"
-  # Optional outbound proxy for Argo CD components (if your network requires it)
-  http_proxy: ""
-  https_proxy: ""
-  no_proxy: "127.0.0.1,localhost,.svc,.cluster.local,kubernetes.default.svc"
   
 # Application configuration
 applications:

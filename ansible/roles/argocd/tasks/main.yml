@@ -107,46 +107,7 @@
       status: "True"
     wait_timeout: 300
     
-# Force admin password configuration
-- name: Configure ArgoCD admin password
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: argocd-secret
-        namespace: "{{ argocd.namespace }}"
-      data:
-        admin.password: JDJ5JDA1JEN3UmJ6V0l3SlJ5MHZBZVZCakZodk9oYUVjZU13RWwvMlZRcEpVcU1vdGlwUHIwMHUxeWlX
-      type: Opaque
-    merge_type: merge
-
-- name: Configure initial admin secret for login
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: argocd-initial-admin-secret
-        namespace: "{{ argocd.namespace }}"
-      data:
-        password: YWRtaW4xMjM=  # base64 of 'admin123'
-      type: Opaque
-    merge_type: merge
-    
-- name: Restart ArgoCD server to apply password
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: argocd-server
-        namespace: "{{ argocd.namespace }}"
-        annotations:
-          kubectl.kubernetes.io/restartedAt: "{{ ansible_date_time.iso8601 }}"
+# Password configuration is now handled by the ArgoCD Helm chart
     
 - name: Apply App-of-Apps pattern
   kubernetes.core.k8s:
