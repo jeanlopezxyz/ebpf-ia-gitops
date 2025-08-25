@@ -30,8 +30,8 @@ spec:
         {{- end }}
     spec:
       serviceAccountName: {{ include "ebpf-ai.ebpfMonitor.serviceAccountName" . }}
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
       securityContext:
         runAsUser: 0
         runAsGroup: 0
