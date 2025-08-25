@@ -17,13 +17,23 @@
     chart_ref: "{{ playbook_dir }}/../helm/charts/argocd"
     release_namespace: "{{ argocd.namespace }}"
     dependency_update: true
-      dex:
-        enabled: false  # Disable for simplicity
-      notifications:
-        enabled: false
-      applicationSet:
-        enabled: true
-    wait: false
+    values:
+      # Override values from Ansible variables if needed
+      argo-cd:
+        configs:
+          cm:
+            url: "http://argocd.{{ kubeadm.base_domain | default('apps.k8s.labjp.xyz') }}"
+      ingress:
+        hosts:
+          - host: "argocd.{{ kubeadm.base_domain | default('apps.k8s.labjp.xyz') }}"
+            paths:
+              - path: /
+                pathType: Prefix
+                service:
+                  name: argocd-server
+                  port: 80
+    wait: true
+    timeout: 600s
     
 - name: Wait for ArgoCD pods to be running
   kubernetes.core.k8s_info:

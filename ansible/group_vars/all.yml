@@ -57,7 +57,7 @@ cilium:
   enable_l2_announcements: false  # Disabled for stability
   enable_netkit: false  # Disabled for stability
   
-# ArgoCD configuration (minimal - full config in helm/charts/argocd/)
+# ArgoCD namespace (full config in helm/charts/argocd/)
 argocd:
   namespace: "argocd"
   
