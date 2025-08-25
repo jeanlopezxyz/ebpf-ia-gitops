@@ -16,12 +16,22 @@ ipAddressPools:
       - "10.0.10.102-10.0.10.120"  # 19 IPs for other applications
 
 # L2 Advertisement Configuration  
-l2Advertisement:
-  name: "apps-l2"
-  ipAddressPools:
-    - "apps-pool"
-  interfaces:
-    - "br0"  # Bridge interface
-  nodeSelectors:
-    - matchLabels:
-        kubernetes.io/hostname: "labjp"
+l2Advertisements:
+  # Advertisement for NGINX Ingress
+  - name: "nginx-l2"
+    ipAddressPools:
+      - "nginx-pool"
+    interfaces:
+      - "br0"  # Bridge interface
+    nodeSelectors:
+      - matchLabels:
+          kubernetes.io/hostname: "labjp"
+  # Advertisement for other apps
+  - name: "apps-l2"
+    ipAddressPools:
+      - "apps-pool"
+    interfaces:
+      - "br0"  # Bridge interface
+    nodeSelectors:
+      - matchLabels:
+          kubernetes.io/hostname: "labjp"
