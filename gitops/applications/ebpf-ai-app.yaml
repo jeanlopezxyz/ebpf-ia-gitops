@@ -21,12 +21,10 @@ spec:
       parameters:
         - name: global.namespace
           value: ebpf-security
-        - name: global.registry  
-          value: "registry.registry.svc.cluster.local:5000"
         - name: global.imageTag
           value: "latest"
         - name: mlDetector.replicaCount
-          value: "0"
+          value: "1"
         - name: mlDetector.image.tag
           value: "latest"
         - name: ebpfMonitor.image.tag
