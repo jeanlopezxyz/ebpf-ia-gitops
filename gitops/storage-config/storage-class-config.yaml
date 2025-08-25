@@ -21,24 +21,28 @@ spec:
         - |
           echo "🔧 Configuring StorageClass declaratively..."
           
-          # Remove default annotation from 'standard' storage class
-          echo "Removing default from 'standard' storage class..."
-          kubectl annotate storageclass standard storageclass.kubernetes.io/is-default-class- || true
+          # Verify local-path is default StorageClass
+          echo "Verifying local-path StorageClass configuration..."
           
-          # Set csi-hostpath-sc as default
-          echo "Setting csi-hostpath-sc as default..."
-          if kubectl get storageclass csi-hostpath-sc >/dev/null 2>&1; then
-            kubectl annotate storageclass csi-hostpath-sc storageclass.kubernetes.io/is-default-class=true --overwrite
-            kubectl label storageclass csi-hostpath-sc app.kubernetes.io/managed-by=argocd --overwrite
-            echo "✅ StorageClass csi-hostpath-sc configured as default"
+          if kubectl get storageclass local-path >/dev/null 2>&1; then
+            echo "✅ local-path StorageClass found"
+            
+            # Ensure it's marked as default
+            kubectl annotate storageclass local-path storageclass.kubernetes.io/is-default-class=true --overwrite
+            kubectl label storageclass local-path app.kubernetes.io/managed-by=argocd --overwrite
+            
+            # Remove default from any other StorageClass
+            for sc in $(kubectl get storageclass -o name | grep -v local-path); do
+              kubectl annotate $sc storageclass.kubernetes.io/is-default-class- || true
+            done
+            
+            echo "✅ local-path configured as default StorageClass"
             
             # Verify configuration
-            echo "🔍 Verifying configuration..."
-            kubectl get storageclass csi-hostpath-sc -o jsonpath='{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}'
-            echo ""
+            echo "🔍 Final StorageClass configuration:"
             kubectl get storageclass
           else
-            echo "❌ StorageClass csi-hostpath-sc not found"
+            echo "❌ local-path StorageClass not found"
             echo "Available StorageClasses:"
             kubectl get storageclass
             exit 1
