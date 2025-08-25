@@ -51,7 +51,7 @@
         ipAddressPools:
         - apps-pool
         interfaces:
-        - "enp1s0"  # VM network interface (not host bridge)
+        - "{{ network.node_interface | default('enp1s0') }}"  # VM/node interface name
         nodeSelectors:
         - matchLabels:
             kubernetes.io/hostname: "{{ kubeadm.node_name }}"

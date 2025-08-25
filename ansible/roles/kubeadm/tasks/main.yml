@@ -121,30 +121,28 @@
         - lsb-release
         - apt-transport-https
         - openssh-server
+      network:
+        version: 2
+        ethernets:
+          enp1s0:
+            dhcp4: false
+            dhcp6: false
+            addresses:
+              - {{ kubeadm.vm.static_ip }}/24
+            routes:
+              - to: default
+                via: {{ kubeadm.vm.gateway }}
+            nameservers:
+              addresses:
+                - {{ kubeadm.vm.gateway }}
+                - 8.8.8.8
       runcmd:
         - systemctl disable --now ufw
         - swapoff -a
         - sed -i '/ swap / s/^/#/' /etc/fstab
         - systemctl enable ssh
         - systemctl start ssh
-        - |  
-          cat > /etc/netplan/01-netcfg.yaml << EOF
-          network:
-            version: 2
-            ethernets:
-              enp1s0:
-                dhcp4: no
-                addresses:
-                  - {{ kubeadm.vm.static_ip }}/24
-                routes:
-                  - to: default
-                    via: {{ kubeadm.vm.gateway }}
-                nameservers:
-                  addresses:
-                    - 8.8.8.8
-                    - 8.8.4.4
-          EOF
-        - netplan apply
+        - systemctl disable --now systemd-networkd-wait-online || true
     dest: /tmp/user-data
   become: yes
 
