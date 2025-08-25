@@ -35,7 +35,7 @@ kubeadm:
     cpus: 4
     disk_size: "60g"
     network_bridge: "br0"         # Production bridge
-    static_ip: "10.0.10.101"       # Fixed IP for API server
+    static_ip: "10.0.10.100"       # Fixed IP for API server (matches DNS)
     gateway: "10.0.10.1"          # Bridge gateway
     dns_servers:
       - "10.0.10.1"              # pfSense as primary DNS
