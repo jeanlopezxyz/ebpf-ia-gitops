@@ -6,7 +6,7 @@ metadata:
 spec:
   loadBalancerIPs: true
   interfaces:
-  - enp1s0  # VM interface name
+  - enp1s0  # VM interface connected to br0 bridge
   nodeSelector:
     matchLabels:
       kubernetes.io/hostname: labjp
