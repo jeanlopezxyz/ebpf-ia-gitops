@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: ml-detector-build-20250825-v4
+  name: ml-detector-build
   namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -44,4 +44,3 @@ spec:
       value: ./applications/ml-detector/Dockerfile
     - name: context-path
       value: ./applications/ml-detector
-

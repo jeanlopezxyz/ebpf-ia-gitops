@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: ebpf-monitor-build-20250825-v2
+  name: ebpf-monitor
   namespace: ebpf-security
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -44,4 +44,3 @@ spec:
       value: ./applications/ebpf-monitor/Dockerfile
     - name: context-path
       value: ./applications/ebpf-monitor
-
