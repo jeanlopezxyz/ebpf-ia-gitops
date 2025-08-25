@@ -45,8 +45,8 @@ kubeadm:
 network:
   # Production: Use local network range for direct access
   # Lab: Use KVM virtual range (accessed via NodePort)  
-  metallb_ip_range: "10.0.10.110-10.0.10.129"  # 20 IPs range for MetalLB (different from node)
-  nginx_ingress_ip: "10.0.10.110"  # Fixed IP for Ingress Controller
+  metallb_ip_range: "10.0.10.101-10.0.10.120"  # 20 IPs range for MetalLB
+  nginx_ingress_ip: "10.0.10.101"  # Fixed IP for Ingress Controller
   bridge_interface: "br0"  # Your configured bridge interface
   
 # Cilium configuration

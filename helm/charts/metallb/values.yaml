@@ -9,11 +9,11 @@ ipAddressPools:
   # Reserved pool for NGINX Ingress Controller
   - name: "nginx-pool"
     addresses:
-      - "10.0.10.110/32"  # Single IP reserved for NGINX
+      - "10.0.10.101/32"  # Single IP reserved for NGINX
   # General pool for other LoadBalancers
   - name: "apps-pool"
     addresses:
-      - "10.0.10.111-10.0.10.129"  # 19 IPs for other applications
+      - "10.0.10.102-10.0.10.120"  # 19 IPs for other applications
 
 # L2 Advertisement Configuration  
 l2Advertisements:
