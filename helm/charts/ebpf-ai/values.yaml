@@ -10,11 +10,11 @@ global:
 # ML Detector Configuration
 mlDetector:
   name: ml-detector
-  replicaCount: 0  # Disabled until images are built
+  replicaCount: 1  # Images are now available
   image:
-    repository: python  # Use public image initially
-    tag: "3.11-slim"
-    pullPolicy: IfNotPresent
+    repository: registry.registry.svc.cluster.local:5000/ml-detector
+    tag: "latest"
+    pullPolicy: Always
   
   service:
     type: ClusterIP
@@ -45,7 +45,7 @@ mlDetector:
     - name: PROMETHEUS_MULTIPROC_DIR
       value: "/tmp/prometheus"
     - name: PROMETHEUS_URL
-      value: "http://prometheus-server.monitoring.svc.cluster.local:9090"
+      value: "http://prometheus-server.prometheus.svc.cluster.local:80"
       
   livenessProbe:
     httpGet:
@@ -68,11 +68,11 @@ mlDetector:
 ebpfMonitor:
   enabled: true
   name: ebpf-monitor
-  replicaCount: 0  # Disabled until images are built
+  replicaCount: 1  # Images are now available
   image:
-    repository: alpine  # Use public image initially
-    tag: "3.18"
-    pullPolicy: IfNotPresent
+    repository: registry.registry.svc.cluster.local:5000/ebpf-monitor
+    tag: "latest"
+    pullPolicy: Always
     
   service:
     type: ClusterIP
