@@ -18,8 +18,6 @@
       include_role:
         name: "{{ cluster_method }}"
         
-    # MetalLB and NGINX Ingress now managed by ArgoCD applications
-        
     - name: Install Cilium CNI with eBPF
       include_role:
         name: cilium
@@ -27,6 +25,14 @@
     - name: Wait for Cilium to fully stabilize kube-proxy replacement
       wait_for:
         timeout: 60
+        
+    - name: Install MetalLB LoadBalancer
+      include_role:
+        name: metallb
+        
+    - name: Install NGINX Ingress Controller
+      include_role:
+        name: nginx-ingress
         
     - name: Setup Storage Classes
       include_role:

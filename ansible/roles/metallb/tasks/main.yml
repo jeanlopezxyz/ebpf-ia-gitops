@@ -1,0 +1,66 @@
+---
+- name: Add MetalLB Helm repository
+  kubernetes.core.helm_repository:
+    name: metallb
+    repo_url: https://metallb.github.io/metallb
+
+- name: Install MetalLB via Helm
+  kubernetes.core.helm:
+    name: metallb
+    chart_ref: metallb/metallb
+    chart_version: "0.14.8"
+    release_namespace: metallb-system
+    create_namespace: true
+    wait: true
+    timeout: 300s
+
+- name: Wait for MetalLB controller to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: metallb-controller
+    namespace: metallb-system
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+    
+- name: Create MetalLB IP Address Pool
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: metallb.io/v1beta1
+      kind: IPAddressPool
+      metadata:
+        name: apps-pool
+        namespace: metallb-system
+      spec:
+        addresses:
+        - "{{ network.metallb_ip_range }}"
+    state: present
+
+- name: Create MetalLB L2 Advertisement  
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: metallb.io/v1beta1
+      kind: L2Advertisement
+      metadata:
+        name: apps-l2
+        namespace: metallb-system
+      spec:
+        ipAddressPools:
+        - apps-pool
+        interfaces:
+        - "{{ network.bridge_interface }}"
+        nodeSelectors:
+        - matchLabels:
+            kubernetes.io/hostname: "{{ kubeadm.node_name }}"
+    state: present
+    
+- name: Display MetalLB status
+  debug:
+    msg:
+      - "✅ MetalLB LoadBalancer installed successfully!"
+      - "🌐 IP Pool: {{ network.metallb_ip_range }}"
+      - "🔗 Interface: {{ network.bridge_interface }}"
+      - "📦 Namespace: metallb-system"

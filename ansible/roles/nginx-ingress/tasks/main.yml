@@ -1,0 +1,48 @@
+---
+- name: Add NGINX Ingress Helm repository
+  kubernetes.core.helm_repository:
+    name: ingress-nginx
+    repo_url: https://kubernetes.github.io/ingress-nginx
+
+- name: Install NGINX Ingress Controller via Helm
+  kubernetes.core.helm:
+    name: ingress-nginx
+    chart_ref: ingress-nginx/ingress-nginx
+    chart_version: "4.11.3"
+    release_namespace: ingress-nginx
+    create_namespace: true
+    values:
+      controller:
+        service:
+          type: LoadBalancer
+          loadBalancerIP: "{{ network.nginx_ingress_ip }}"
+          externalTrafficPolicy: Local
+        ingressClassResource:
+          default: true
+        metrics:
+          enabled: true
+        podAnnotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "10254"
+    wait: true
+    timeout: 300s
+
+- name: Wait for NGINX Ingress to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: ingress-nginx-controller
+    namespace: ingress-nginx
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+    
+- name: Display NGINX Ingress status
+  debug:
+    msg:
+      - "✅ NGINX Ingress Controller installed successfully!"
+      - "🌐 LoadBalancer IP: {{ network.nginx_ingress_ip }}"
+      - "📦 Namespace: ingress-nginx"
+      - "🔧 Metrics: Enabled on port 10254"
