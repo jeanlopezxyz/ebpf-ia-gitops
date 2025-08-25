@@ -70,7 +70,7 @@ ebpfMonitor:
   name: ebpf-monitor
   replicaCount: 1  # Images are now available
   image:
-    repository: nginx
+    repository: registry.registry.svc.cluster.local:5000/ebpf-monitor
     tag: "latest"
     pullPolicy: Always
     
