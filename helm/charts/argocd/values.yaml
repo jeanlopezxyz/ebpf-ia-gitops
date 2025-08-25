@@ -8,8 +8,8 @@ argo-cd:
       admin.enabled: "true"
       url: "http://argocd.apps.k8s.labjp.xyz"  # External URL
     secret:
-      # Initial admin password
-      argocdServerAdminPassword: "admin123"
+      # bcrypt hash for "admin123" 
+      argocdServerAdminPassword: "$2y$05$CwRbzWIwJRy0vAeVBjFhvOhaEceMwEl/2VQpJUqMotipPr00u1yiW"
       argocdServerAdminPasswordMtime: "2025-08-24T00:00:00Z"
   
   server:
